@@ -2,10 +2,13 @@
   min-height: 100vh;
   background-color: var(--bg-primary);
   transition: background-color 0.3s;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
   background-color: var(--card-bg);
@@ -16,31 +19,74 @@
   z-index: 100;
 }
 
-.menu-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  margin-right: 1rem;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.menu-btn:hover {
-  background-color: var(--hover-bg);
-}
-
 .header h1 {
   margin: 0;
   font-size: 1.5rem;
   color: var(--text-primary);
 }
 
+.new-connection-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.new-connection-btn:hover {
+  background: #0056b3;
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+}
+
 .main-content {
+  flex: 1;
   padding: 2rem;
-  max-width: 1200px;
+  overflow-y: auto;
+}
+
+.welcome-message {
+  text-align: center;
+  max-width: 600px;
   margin: 0 auto;
+  padding: 4rem 2rem;
+}
+
+.welcome-message h2 {
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.welcome-message p {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.welcome-message .connect-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.welcome-message .connect-btn:hover {
+  background: #0056b3;
 }
 
 .content-card {

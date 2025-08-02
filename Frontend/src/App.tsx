@@ -1,34 +1,49 @@
 import { useState } from 'react'
 import { ThemeProvider } from './contexts/ThemeContext'
-import Sidebar from './components/Sidebar'
+import DatabaseSidebar from './components/DatabaseSidebar'
+import ConnectionForm from './components/ConnectionForm'
 import './App.css'
 
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showConnectionForm, setShowConnectionForm] = useState(false)
+
+  const handleConnectionSuccess = () => {
+    setShowConnectionForm(false)
+  }
 
   return (
     <ThemeProvider>
       <div className="app">
-
         <header className="header">
+          <h1>Gestor de Base de Datos SQL Server</h1>
           <button
-            className="menu-btn"
-            onClick={() => setSidebarOpen(true)}
+            className="new-connection-btn"
+            onClick={() => setShowConnectionForm(true)}
           >
-            ☰
+            + Nueva Conexión
           </button>
-          <h1>Gestor de Base de Datos</h1>
         </header>
 
-
-        <Sidebar
-          isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen(false)}
-        />
-
-        <main className="main-content">
-
-        </main>
+        <div className="app-content">
+          <DatabaseSidebar />
+          
+          <main className="main-content">
+            {showConnectionForm ? (
+              <ConnectionForm onConnectionSuccess={handleConnectionSuccess} />
+            ) : (
+              <div className="welcome-message">
+                <h2>Bienvenido al Gestor de Base de Datos</h2>
+                <p>Selecciona una conexión del sidebar o crea una nueva para comenzar.</p>
+                <button
+                  className="connect-btn"
+                  onClick={() => setShowConnectionForm(true)}
+                >
+                  Crear Nueva Conexión
+                </button>
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </ThemeProvider>
   )
