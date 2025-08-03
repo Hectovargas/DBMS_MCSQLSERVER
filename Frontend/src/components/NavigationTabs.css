@@ -1,0 +1,60 @@
+/* ========== CONTENEDOR PRINCIPAL DE PESTAÑAS ========== */
+.navigation-tabs {
+  display: flex; /* Habilita flexbox */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+  padding: 0 20px; /* Espacio interno horizontal */
+  overflow-x: auto; /* Permite scroll horizontal si las pestañas no caben */
+}
+
+/* ========== BOTONES DE PESTAÑAS ========== */
+.nav-tab {
+  background: none; /* Sin fondo */
+  border: none; /* Sin borde */
+  padding: 12px 20px; /* Espacio interno */
+  color: var(--text-secondary); /* Color del texto usando variable CSS */
+  cursor: pointer; /* Cambia el cursor a mano */
+  font-size: 14px; /* Tamaño de la fuente */
+  font-weight: 500; /* Peso de la fuente */
+  transition: all 0.2s; /* Transición suave */
+  border-bottom: 2px solid transparent; /* Borde inferior transparente */
+  white-space: nowrap; /* Evita que el texto se envuelva */
+  min-width: 120px; /* Ancho mínimo para evitar pestañas muy estrechas */
+}
+
+/* ========== EFECTO HOVER DE PESTAÑAS ========== */
+.nav-tab:hover:not(:disabled) {
+  background: var(--hover-bg); /* Color de fondo al pasar el mouse usando variable CSS */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+}
+
+/* ========== ESTADO ACTIVO DE PESTAÑAS ========== */
+.nav-tab.active {
+  color: var(--primary-color); /* Color del texto activo usando variable CSS */
+  border-bottom-color: var(--primary-color); /* Color del borde inferior activo */
+  background: var(--bg-secondary); /* Color de fondo activo usando variable CSS */
+}
+
+/* ========== ESTADO DESHABILITADO DE PESTAÑAS ========== */
+.nav-tab:disabled {
+  color: var(--disabled-text); /* Color del texto deshabilitado usando variable CSS */
+  cursor: not-allowed; /* Cambia el cursor para indicar que no está disponible */
+  opacity: 0.6; /* Hace la pestaña semi-transparente */
+}
+
+/* ========== MEDIA QUERIES PARA RESPONSIVIDAD ========== */
+@media (max-width: 768px) {
+  /* Estilos para pantallas pequeñas (tablets y móviles) */
+  
+  /* Contenedor de pestañas responsivo */
+  .navigation-tabs {
+    padding: 0 10px; /* Reduce el espacio interno horizontal */
+  }
+  
+  /* Botones de pestañas responsivos */
+  .nav-tab {
+    padding: 10px 16px; /* Reduce el espacio interno */
+    font-size: 13px; /* Reduce el tamaño de la fuente */
+    min-width: 100px; /* Reduce el ancho mínimo */
+  }
+}

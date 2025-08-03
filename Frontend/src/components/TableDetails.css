@@ -1,0 +1,514 @@
+/* ========== CONTENEDOR PRINCIPAL DE DETALLES DE TABLA ========== */
+.table-details {
+  display: flex; /* Habilita flexbox */
+  flex-direction: column; /* Organiza elementos verticalmente */
+  height: 100%; /* Toma toda la altura disponible */
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  border-radius: 8px; /* Bordes redondeados */
+  overflow: hidden; /* Oculta contenido que se salga del contenedor */
+}
+
+/* ========== ENCABEZADO DE DETALLES DE TABLA ========== */
+.table-details-header {
+  display: flex; /* Habilita flexbox */
+  justify-content: space-between; /* Distribuye elementos: título a la izquierda, esquema a la derecha */
+  align-items: center; /* Centra verticalmente los elementos */
+  padding: 16px 20px; /* Espacio interno */
+  background: var(--bg-primary); /* Color de fondo del header */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+}
+
+/* ========== TÍTULO DE LA TABLA ========== */
+.table-details-header h3 {
+  margin: 0; /* Sin márgenes */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 18px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* ========== NOMBRE DEL ESQUEMA ========== */
+.schema-name {
+  font-size: 14px; /* Tamaño de la fuente */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  padding: 4px 12px; /* Espacio interno */
+  border-radius: 16px; /* Bordes redondeados (píldora) */
+  font-weight: 500; /* Peso de la fuente */
+}
+
+/* ========== PESTAÑAS DE NAVEGACIÓN ========== */
+.table-tabs {
+  display: flex; /* Habilita flexbox */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+}
+
+/* ========== BOTONES DE PESTAÑAS ========== */
+.tab-btn {
+  flex: 1; /* Toma espacio igual entre todas las pestañas */
+  background: none; /* Sin fondo */
+  border: none; /* Sin borde */
+  padding: 12px 16px; /* Espacio interno */
+  color: var(--text-secondary); /* Color del texto usando variable CSS */
+  cursor: pointer; /* Cambia el cursor a mano */
+  font-size: 14px; /* Tamaño de la fuente */
+  font-weight: 500; /* Peso de la fuente */
+  transition: all 0.2s; /* Transición suave */
+  border-bottom: 2px solid transparent; /* Borde inferior transparente */
+}
+
+/* Efecto hover de las pestañas */
+.tab-btn:hover {
+  background: var(--hover-bg); /* Color de fondo al pasar el mouse usando variable CSS */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+}
+
+/* Estado activo de las pestañas */
+.tab-btn.active {
+  color: var(--primary-color); /* Color del texto activo usando variable CSS */
+  border-bottom-color: var(--primary-color); /* Color del borde inferior activo */
+  background: var(--bg-secondary); /* Color de fondo activo usando variable CSS */
+}
+
+/* ========== MENSAJE SIN TABLA SELECCIONADA ========== */
+.no-table-selected {
+  display: flex; /* Habilita flexbox */
+  align-items: center; /* Centra verticalmente */
+  justify-content: center; /* Centra horizontalmente */
+  height: 200px; /* Altura fija */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  font-size: 16px; /* Tamaño de la fuente */
+}
+
+/* ========== CONTENEDOR DE CARGA ========== */
+.loading-container {
+  display: flex; /* Habilita flexbox */
+  align-items: center; /* Centra verticalmente */
+  justify-content: center; /* Centra horizontalmente */
+  padding: 40px; /* Espacio interno */
+}
+
+/* ========== INDICADOR DE CARGA ========== */
+.loading {
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  font-size: 14px; /* Tamaño de la fuente */
+}
+
+/* ========== MENSAJE DE ERROR ========== */
+.error-message {
+  padding: 20px; /* Espacio interno */
+  background: var(--error-bg); /* Color de fondo de error usando variable CSS */
+  color: var(--error-text); /* Color del texto de error usando variable CSS */
+  border-radius: 6px; /* Bordes redondeados */
+  margin: 20px; /* Márgenes */
+}
+
+/* Título del error */
+.error-message h4 {
+  margin: 0 0 8px 0; /* Sin margen superior, 8px inferior */
+  font-size: 16px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* Párrafo del error */
+.error-message p {
+  margin: 0; /* Sin márgenes */
+  font-size: 14px; /* Tamaño de la fuente */
+}
+
+/* ========== BOTÓN DE REINTENTAR ========== */
+.retry-btn {
+  background: var(--primary-color); /* Color de fondo usando variable CSS */
+  color: white; /* Color del texto */
+  border: none; /* Sin borde */
+  padding: 8px 16px; /* Espacio interno */
+  border-radius: 4px; /* Bordes redondeados */
+  cursor: pointer; /* Cambia el cursor a mano */
+  font-size: 14px; /* Tamaño de la fuente */
+  margin-top: 12px; /* Espacio superior */
+  transition: background-color 0.2s; /* Transición suave */
+}
+
+/* Efecto hover del botón de reintentar */
+.retry-btn:hover {
+  background: var(--primary-hover); /* Color de hover usando variable CSS */
+}
+
+/* ========== CONTENIDO DE LAS PESTAÑAS ========== */
+.tab-content {
+  flex: 1; /* Toma todo el espacio disponible */
+  padding: 20px; /* Espacio interno */
+  overflow-y: auto; /* Permite scroll vertical */
+}
+
+/* ========== PESTAÑA: COLUMNAS ========== */
+.columns-tab {
+  display: flex; /* Habilita flexbox */
+  flex-direction: column; /* Organiza elementos verticalmente */
+  gap: 16px; /* Espacio entre elementos */
+}
+
+/* ========== ENCABEZADO DE COLUMNAS ========== */
+.columns-header {
+  display: flex; /* Habilita flexbox */
+  justify-content: space-between; /* Distribuye elementos */
+  align-items: center; /* Centra verticalmente */
+  padding-bottom: 12px; /* Espacio interno inferior */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+}
+
+/* Título de columnas */
+.columns-header h4 {
+  margin: 0; /* Sin márgenes */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 16px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* ========== CONTADOR DE COLUMNAS ========== */
+.column-count {
+  font-size: 12px; /* Tamaño de fuente pequeño */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  padding: 4px 8px; /* Espacio interno */
+  border-radius: 12px; /* Bordes redondeados */
+}
+
+/* ========== CONTENEDOR DE LA TABLA DE COLUMNAS ========== */
+.columns-table-container {
+  overflow-x: auto; /* Permite scroll horizontal si la tabla es muy ancha */
+  border-radius: 6px; /* Bordes redondeados */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+}
+
+/* ========== TABLA DE COLUMNAS ========== */
+.columns-table {
+  width: 100%; /* Ancho completo */
+  border-collapse: collapse; /* Elimina espacios entre celdas */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+}
+
+/* ========== ENCABEZADOS DE LA TABLA DE COLUMNAS ========== */
+.columns-table th {
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  padding: 12px 16px; /* Espacio interno */
+  text-align: left; /* Alineación a la izquierda */
+  font-weight: 600; /* Peso de la fuente */
+  border-bottom: 2px solid var(--border-color); /* Borde inferior */
+  font-size: 14px; /* Tamaño de la fuente */
+}
+
+/* ========== CELDAS DE LA TABLA DE COLUMNAS ========== */
+.columns-table td {
+  padding: 12px 16px; /* Espacio interno */
+  border-bottom: 1px solid var(--border-color); /* Borde inferior */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 14px; /* Tamaño de la fuente */
+  vertical-align: top; /* Alineación vertical superior */
+}
+
+/* ========== EFECTO HOVER EN FILAS DE COLUMNAS ========== */
+.columns-table tr:hover {
+  background: var(--hover-bg); /* Color de fondo al pasar el mouse usando variable CSS */
+}
+
+/* ========== NOMBRE DE COLUMNA ========== */
+.column-name {
+  display: flex; /* Habilita flexbox */
+  align-items: center; /* Centra verticalmente */
+  gap: 8px; /* Espacio entre icono y texto */
+  font-weight: 500; /* Peso de la fuente */
+}
+
+/* ========== ICONO DE COLUMNA ========== */
+.column-icon {
+  font-size: 16px; /* Tamaño del icono */
+}
+
+/* ========== TIPO DE DATO ========== */
+.data-type {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; /* Fuente monoespaciada */
+  font-size: 13px; /* Tamaño de la fuente */
+  color: var(--primary-color); /* Color del texto usando variable CSS */
+}
+
+/* ========== CAMPO NULO ========== */
+.nullable {
+  font-weight: 500; /* Peso de la fuente */
+}
+
+/* ========== VALOR POR DEFECTO ========== */
+.default-value {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; /* Fuente monoespaciada */
+  font-size: 13px; /* Tamaño de la fuente */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+}
+
+/* ========== ETIQUETAS DE PROPIEDADES ========== */
+.property-tags {
+  display: flex; /* Habilita flexbox */
+  gap: 4px; /* Espacio entre etiquetas */
+  flex-wrap: wrap; /* Permite que las etiquetas se envuelvan */
+}
+
+/* ========== ETIQUETA INDIVIDUAL ========== */
+.tag {
+  font-size: 11px; /* Tamaño de fuente muy pequeño */
+  padding: 2px 6px; /* Espacio interno */
+  border-radius: 10px; /* Bordes redondeados */
+  font-weight: 500; /* Peso de la fuente */
+  text-transform: uppercase; /* Texto en mayúsculas */
+  letter-spacing: 0.5px; /* Espaciado entre letras */
+}
+
+/* Etiqueta de llave primaria */
+.tag.primary-key {
+  background: #ffc107; /* Fondo amarillo */
+  color: #212529; /* Color del texto */
+}
+
+/* Etiqueta de llave foránea */
+.tag.foreign-key {
+  background: #17a2b8; /* Fondo azul claro */
+  color: white; /* Color del texto */
+}
+
+/* Etiqueta de identidad */
+.tag.identity {
+  background: #28a745; /* Fondo verde */
+  color: white; /* Color del texto */
+}
+
+/* ========== PESTAÑA: DATOS ========== */
+.data-tab {
+  display: flex; /* Habilita flexbox */
+  flex-direction: column; /* Organiza elementos verticalmente */
+  gap: 20px; /* Espacio entre elementos */
+}
+
+/* ========== ENCABEZADO DE DATOS ========== */
+.data-header {
+  text-align: center; /* Centra el texto */
+  padding: 20px; /* Espacio interno */
+}
+
+/* Título de datos */
+.data-header h4 {
+  margin: 0 0 12px 0; /* Sin margen superior, 12px inferior */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 18px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* Párrafo de datos */
+.data-header p {
+  margin: 0; /* Sin márgenes */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  font-size: 14px; /* Tamaño de la fuente */
+}
+
+/* ========== SUGERENCIA DE CONSULTA ========== */
+.query-suggestion {
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  border-radius: 8px; /* Bordes redondeados */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+  overflow: hidden; /* Oculta contenido que se salga */
+}
+
+/* ========== ENCABEZADO DE CONSULTA ========== */
+.query-header {
+  display: flex; /* Habilita flexbox */
+  justify-content: space-between; /* Distribuye elementos */
+  align-items: center; /* Centra verticalmente */
+  padding: 12px 16px; /* Espacio interno */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+}
+
+/* Texto del encabezado de consulta */
+.query-header span {
+  font-weight: 500; /* Peso de la fuente */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 14px; /* Tamaño de la fuente */
+}
+
+/* ========== BOTÓN DE COPIAR ========== */
+.copy-btn {
+  background: var(--primary-color); /* Color de fondo usando variable CSS */
+  color: white; /* Color del texto */
+  border: none; /* Sin borde */
+  padding: 6px 12px; /* Espacio interno */
+  border-radius: 4px; /* Bordes redondeados */
+  cursor: pointer; /* Cambia el cursor a mano */
+  font-size: 12px; /* Tamaño de la fuente */
+  transition: background-color 0.2s; /* Transición suave */
+}
+
+/* Efecto hover del botón de copiar */
+.copy-btn:hover {
+  background: var(--primary-hover); /* Color de hover usando variable CSS */
+}
+
+/* ========== CÓDIGO DE CONSULTA ========== */
+.query-code {
+  padding: 16px; /* Espacio interno */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; /* Fuente monoespaciada */
+  font-size: 13px; /* Tamaño de la fuente */
+  line-height: 1.5; /* Altura de línea */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  white-space: pre-wrap; /* Preserva espacios y saltos de línea */
+  word-break: break-word; /* Permite que las palabras largas se rompan */
+}
+
+/* ========== CONSEJOS DE DATOS ========== */
+.data-tips {
+  background: var(--info-bg); /* Color de fondo de información usando variable CSS */
+  border-radius: 6px; /* Bordes redondeados */
+  padding: 16px; /* Espacio interno */
+  border-left: 4px solid var(--info-border); /* Borde izquierdo de información */
+}
+
+/* Título de consejos */
+.data-tips h5 {
+  margin: 0 0 12px 0; /* Sin margen superior, 12px inferior */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 14px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* Lista de consejos */
+.data-tips ul {
+  margin: 0; /* Sin márgenes */
+  padding-left: 20px; /* Sangría para la lista */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+}
+
+/* Elementos de la lista de consejos */
+.data-tips li {
+  margin-bottom: 6px; /* Espacio entre elementos */
+  font-size: 13px; /* Tamaño de la fuente */
+}
+
+/* ========== PESTAÑA: ESTRUCTURA ========== */
+.structure-tab {
+  display: flex; /* Habilita flexbox */
+  flex-direction: column; /* Organiza elementos verticalmente */
+  gap: 20px; /* Espacio entre elementos */
+}
+
+/* ========== ENCABEZADO DE ESTRUCTURA ========== */
+.structure-header {
+  text-align: center; /* Centra el texto */
+  padding: 20px; /* Espacio interno */
+}
+
+/* Título de estructura */
+.structure-header h4 {
+  margin: 0 0 12px 0; /* Sin margen superior, 12px inferior */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 18px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* Párrafo de estructura */
+.structure-header p {
+  margin: 0; /* Sin márgenes */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  font-size: 14px; /* Tamaño de la fuente */
+}
+
+/* ========== RESUMEN DE ESTRUCTURA ========== */
+.structure-summary {
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  border-radius: 8px; /* Bordes redondeados */
+  padding: 20px; /* Espacio interno */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+}
+
+/* Título del resumen */
+.structure-summary h5 {
+  margin: 0 0 16px 0; /* Sin margen superior, 16px inferior */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 16px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* ========== GRID DE RESUMEN ========== */
+.summary-grid {
+  display: grid; /* Habilita CSS Grid */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Columnas responsivas */
+  gap: 16px; /* Espacio entre elementos */
+}
+
+/* ========== ELEMENTOS DEL RESUMEN ========== */
+.summary-item {
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  padding: 12px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+}
+
+/* ========== ETIQUETA DEL RESUMEN ========== */
+.summary-label {
+  font-size: 12px; /* Tamaño de fuente pequeño */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  font-weight: 500; /* Peso de la fuente */
+  text-transform: uppercase; /* Texto en mayúsculas */
+  letter-spacing: 0.5px; /* Espaciado entre letras */
+}
+
+/* ========== VALOR DEL RESUMEN ========== */
+.summary-value {
+  font-size: 18px; /* Tamaño de la fuente */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-weight: 600; /* Peso de la fuente */
+  margin-top: 4px; /* Espacio superior */
+}
+
+/* ========== MEDIA QUERIES PARA RESPONSIVIDAD ========== */
+@media (max-width: 768px) {
+  /* Estilos para pantallas pequeñas (tablets y móviles) */
+  
+  /* Header responsivo */
+  .table-details-header {
+    flex-direction: column; /* Organiza elementos verticalmente */
+    gap: 8px; /* Espacio entre elementos */
+    align-items: flex-start; /* Alinea elementos a la izquierda */
+  }
+  
+  /* Pestañas responsivas */
+  .table-tabs {
+    flex-direction: column; /* Organiza elementos verticalmente */
+  }
+  
+  /* Botones de pestañas responsivos */
+  .tab-btn {
+    text-align: left; /* Alinea texto a la izquierda */
+    border-bottom: none; /* Elimina borde inferior */
+    border-left: 2px solid transparent; /* Borde izquierdo transparente */
+  }
+  
+  /* Estado activo responsivo */
+  .tab-btn.active {
+    border-left-color: var(--primary-color); /* Color del borde izquierdo activo */
+    border-bottom-color: transparent; /* Elimina borde inferior activo */
+  }
+  
+  /* Tabla responsiva */
+  .columns-table {
+    font-size: 12px; /* Reduce el tamaño de la fuente */
+  }
+  
+  /* Celdas de tabla responsivas */
+  .columns-table th,
+  .columns-table td {
+    padding: 8px 12px; /* Reduce el espacio interno */
+  }
+  
+  /* Grid de resumen responsivo */
+  .summary-grid {
+    grid-template-columns: 1fr; /* Una sola columna en pantallas pequeñas */
+  }
+}

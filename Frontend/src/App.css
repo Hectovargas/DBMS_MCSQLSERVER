@@ -1,157 +1,266 @@
+/* ========== CONTENEDOR PRINCIPAL DE LA APLICACIÓN ========== */
 .app {
-  min-height: 100vh;
-  background-color: var(--bg-primary);
-  transition: background-color 0.3s;
-  display: flex;
-  flex-direction: column;
+  min-height: 100vh; /* Altura mínima: 100% de la altura de la ventana */
+  background-color: var(--bg-primary); /* Color de fondo usando variable CSS */
+  transition: background-color 0.3s; /* Transición suave al cambiar el tema */
+  display: flex; /* Habilita flexbox */
+  flex-direction: column; /* Organiza los elementos verticalmente */
 }
 
+/* ========== ENCABEZADO DE LA APLICACIÓN ========== */
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background-color: var(--card-bg);
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: var(--shadow);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  display: flex; /* Habilita flexbox */
+  justify-content: space-between; /* Distribuye elementos: título a la izquierda, botón a la derecha */
+  align-items: center; /* Centra verticalmente los elementos */
+  padding: 1rem 2rem; /* Espacio interno: 1rem arriba/abajo, 2rem izquierda/derecha */
+  background-color: var(--card-bg); /* Color de fondo del header */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+  box-shadow: var(--shadow); /* Sombra sutil */
+  position: sticky; /* El header se mantiene fijo al hacer scroll */
+  top: 0; /* Se pega en la parte superior */
+  z-index: 100; /* Asegura que esté por encima de otros elementos */
 }
 
+/* ========== LADO IZQUIERDO DEL HEADER ========== */
+.header-left {
+  display: flex; /* Habilita flexbox */
+  align-items: center; /* Centra verticalmente los elementos */
+  gap: 20px; /* Espacio entre el título y el indicador de estado */
+}
+
+/* ========== LADO DERECHO DEL HEADER ========== */
+.header-right {
+  display: flex; /* Habilita flexbox */
+  align-items: center; /* Centra verticalmente los elementos */
+  gap: 12px; /* Espacio entre botones */
+}
+
+/* ========== BOTÓN DE CAMBIO DE TEMA ========== */
+.theme-toggle-btn {
+  background: transparent; /* Fondo transparente */
+  color: var(--text-primary); /* Color del texto */
+  border: 1px solid var(--border-color); /* Borde sutil */
+  padding: 8px 12px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  font-size: 16px; /* Tamaño de la fuente */
+  cursor: pointer; /* Cambia el cursor a mano */
+  transition: all 0.2s; /* Transición suave */
+  display: flex; /* Habilita flexbox */
+  align-items: center; /* Centra verticalmente */
+  justify-content: center; /* Centra horizontalmente */
+  min-width: 40px; /* Ancho mínimo */
+  height: 40px; /* Altura fija */
+}
+
+/* Efecto hover del botón de cambio de tema */
+.theme-toggle-btn:hover {
+  background: var(--hover-bg); /* Color de fondo al pasar el mouse */
+  border-color: var(--primary-color); /* Color del borde al pasar el mouse */
+  transform: scale(1.05); /* Ligeramente más grande */
+}
+
+/* ========== TÍTULO PRINCIPAL ========== */
 .header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: var(--text-primary);
+  margin: 0; /* Elimina márgenes por defecto */
+  font-size: 1.5rem; /* Tamaño de la fuente */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
 }
 
+/* ========== BOTÓN DE NUEVA CONEXIÓN ========== */
 .new-connection-btn {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  background: #007bff; /* Color de fondo azul */
+  color: white; /* Color del texto */
+  border: none; /* Sin borde */
+  padding: 10px 20px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  font-size: 14px; /* Tamaño de la fuente */
+  font-weight: 500; /* Peso de la fuente */
+  cursor: pointer; /* Cambia el cursor a mano */
+  transition: background-color 0.2s; /* Transición suave al cambiar de color */
 }
 
+/* Efecto hover del botón de nueva conexión */
 .new-connection-btn:hover {
-  background: #0056b3;
+  background: #0056b3; /* Color azul más oscuro al pasar el mouse */
 }
 
+/* ========== CONTENIDO PRINCIPAL DE LA APLICACIÓN ========== */
+/* ========== CONTENIDO PRINCIPAL DE LA APLICACIÓN ========== */
 .app-content {
-  display: flex;
-  flex: 1;
+  display: flex; /* Habilita flexbox */
+  flex: 1; /* Toma todo el espacio disponible */
+  height: calc(100vh - 80px); /* Altura fija: 100% de la ventana menos el header */
+  overflow: hidden; /* Evita scroll en el contenedor principal */
 }
 
+/* ========== ÁREA PRINCIPAL DE CONTENIDO ========== */
 .main-content {
-  flex: 1;
-  padding: 2rem;
-  overflow-y: auto;
+  flex: 1; /* Toma todo el espacio disponible */
+  padding: 2rem; /* Espacio interno */
+  overflow-y: auto; /* Permite scroll vertical independiente */
+  height: 100%; /* Altura completa del contenedor */
 }
 
+/* ========== MENSAJE DE BIENVENIDA ========== */
 .welcome-message {
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 4rem 2rem;
+  text-align: center; /* Centra el texto */
+  max-width: 600px; /* Ancho máximo para mejor legibilidad */
+  margin: 0 auto; /* Centra el contenedor horizontalmente */
+  padding: 4rem 2rem; /* Espacio interno */
 }
 
+/* Título del mensaje de bienvenida */
 .welcome-message h2 {
-  color: var(--text-primary);
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 1rem;
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 28px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+  margin-bottom: 1rem; /* Espacio inferior */
 }
 
+/* Párrafo del mensaje de bienvenida */
 .welcome-message p {
-  color: var(--text-secondary);
-  font-size: 16px;
-  margin-bottom: 2rem;
-  line-height: 1.6;
+  color: var(--text-secondary); /* Color del texto secundario */
+  font-size: 16px; /* Tamaño de la fuente */
+  margin-bottom: 2rem; /* Espacio inferior */
+  line-height: 1.6; /* Altura de línea para mejor legibilidad */
 }
 
+/* ========== ACCIONES DE BIENVENIDA ========== */
+.welcome-actions {
+  display: flex; /* Habilita flexbox */
+  gap: 16px; /* Espacio entre botones */
+  justify-content: center; /* Centra los botones horizontalmente */
+  flex-wrap: wrap; /* Permite que los botones se envuelvan en pantallas pequeñas */
+}
+
+/* ========== BOTÓN DE CONECTAR ========== */
 .welcome-message .connect-btn {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  background: #007bff; /* Color de fondo azul */
+  color: white; /* Color del texto */
+  border: none; /* Sin borde */
+  padding: 12px 24px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  font-size: 16px; /* Tamaño de la fuente */
+  font-weight: 500; /* Peso de la fuente */
+  cursor: pointer; /* Cambia el cursor a mano */
+  transition: background-color 0.2s; /* Transición suave */
 }
 
+/* Efecto hover del botón de conectar */
 .welcome-message .connect-btn:hover {
-  background: #0056b3;
+  background: #0056b3; /* Color azul más oscuro al pasar el mouse */
 }
 
+/* ========== BOTÓN DE CONSULTA ========== */
+.query-btn {
+  background: #28a745; /* Color de fondo verde */
+  color: white; /* Color del texto */
+  border: none; /* Sin borde */
+  padding: 12px 24px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  font-size: 16px; /* Tamaño de la fuente */
+  font-weight: 500; /* Peso de la fuente */
+  cursor: pointer; /* Cambia el cursor a mano */
+  transition: background-color 0.2s; /* Transición suave */
+}
+
+/* Efecto hover del botón de consulta */
+.query-btn:hover:not(:disabled) {
+  background: #218838; /* Color verde más oscuro al pasar el mouse */
+}
+
+/* Estado deshabilitado del botón de consulta */
+.query-btn:disabled {
+  background: #6c757d; /* Color gris cuando está deshabilitado */
+  cursor: not-allowed; /* Cambia el cursor para indicar que no está disponible */
+  opacity: 0.6; /* Hace el botón semi-transparente */
+}
+
+/* ========== TARJETAS DE CONTENIDO ========== */
 .content-card {
-  background-color: var(--card-bg);
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
+  background: var(--card-bg); /* Color de fondo usando variable CSS */
+  border-radius: 8px; /* Bordes redondeados */
+  padding: 2rem; /* Espacio interno */
+  box-shadow: var(--shadow); /* Sombra sutil */
+  margin-bottom: 2rem; /* Espacio inferior */
 }
 
+/* Título de las tarjetas de contenido */
 .content-card h2 {
-  color: var(--text-primary);
-  margin-bottom: 1rem;
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  margin-bottom: 1rem; /* Espacio inferior */
 }
 
+/* Párrafo de las tarjetas de contenido */
 .content-card p {
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 2rem;
+  color: var(--text-secondary); /* Color del texto secundario */
+  line-height: 1.6; /* Altura de línea para mejor legibilidad */
 }
 
+/* ========== GRID DE CARACTERÍSTICAS ========== */
 .feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-top: 2rem;
+  display: grid; /* Habilita CSS Grid */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Columnas responsivas */
+  gap: 2rem; /* Espacio entre elementos */
+  margin-top: 2rem; /* Espacio superior */
 }
 
+/* ========== ELEMENTOS DE CARACTERÍSTICAS ========== */
 .feature-item {
-  padding: 1.5rem;
-  background-color: var(--bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: var(--card-bg); /* Color de fondo usando variable CSS */
+  padding: 1.5rem; /* Espacio interno */
+  border-radius: 8px; /* Bordes redondeados */
+  box-shadow: var(--shadow); /* Sombra sutil */
+  transition: transform 0.2s, box-shadow 0.2s; /* Transiciones suaves */
 }
 
+/* Efecto hover de los elementos de características */
 .feature-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px); /* Eleva ligeramente el elemento */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Sombra más pronunciada */
 }
 
+/* Título de los elementos de características */
 .feature-item h3 {
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  margin-bottom: 0.5rem; /* Espacio inferior */
 }
 
+/* Párrafo de los elementos de características */
 .feature-item p {
-  color: var(--text-secondary);
-  margin: 0;
+  color: var(--text-secondary); /* Color del texto secundario */
+  font-size: 14px; /* Tamaño de la fuente */
 }
 
+/* ========== MEDIA QUERIES PARA RESPONSIVIDAD ========== */
 @media (max-width: 768px) {
+  /* Estilos para pantallas pequeñas (tablets y móviles) */
+  
+  /* Header responsivo */
   .header {
-    padding: 1rem;
+    padding: 1rem; /* Reduce el espacio interno */
+    flex-direction: column; /* Organiza elementos verticalmente */
+    gap: 1rem; /* Espacio entre elementos */
   }
   
+  /* Header right responsivo */
+  .header-right {
+    gap: 8px; /* Reduce el espacio entre botones */
+  }
+  
+  /* Contenido principal responsivo */
   .main-content {
-    padding: 1rem;
+    padding: 1rem; /* Reduce el espacio interno */
   }
   
+  /* Tarjetas de contenido responsivas */
   .content-card {
-    padding: 1.5rem;
+    padding: 1.5rem; /* Reduce el espacio interno */
   }
   
+  /* Grid de características responsivo */
   .feature-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* Una sola columna en pantallas pequeñas */
+    gap: 1rem; /* Reduce el espacio entre elementos */
   }
 }

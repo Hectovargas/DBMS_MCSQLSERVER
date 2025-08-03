@@ -1,0 +1,357 @@
+/* ========== CONTENEDOR PRINCIPAL DEL EDITOR ========== */
+.query-editor {
+  display: flex; /* Habilita flexbox */
+  flex-direction: column; /* Organiza elementos verticalmente */
+  height: 100%; /* Toma toda la altura disponible */
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  border-radius: 8px; /* Bordes redondeados */
+  overflow: hidden; /* Oculta contenido que se salga del contenedor */
+}
+
+/* ========== ENCABEZADO DEL EDITOR ========== */
+.query-editor-header {
+  display: flex; /* Habilita flexbox */
+  justify-content: space-between; /* Distribuye elementos: título a la izquierda, botones a la derecha */
+  align-items: center; /* Centra verticalmente los elementos */
+  padding: 16px 20px; /* Espacio interno */
+  background: var(--bg-primary); /* Color de fondo del header */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+}
+
+/* ========== TÍTULO DEL EDITOR ========== */
+.query-editor-header h3 {
+  margin: 0; /* Sin márgenes */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 18px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* ========== BOTONES DE ACCIÓN ========== */
+.query-actions {
+  display: flex; /* Habilita flexbox */
+  gap: 8px; /* Espacio entre botones */
+}
+
+/* ========== BOTÓN DE EJECUTAR ========== */
+.execute-btn {
+  background: var(--primary-color); /* Color de fondo usando variable CSS */
+  color: white; /* Color del texto */
+  border: none; /* Sin borde */
+  padding: 8px 16px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  cursor: pointer; /* Cambia el cursor a mano */
+  font-weight: 500; /* Peso de la fuente */
+  transition: background-color 0.2s; /* Transición suave */
+}
+
+/* Efecto hover del botón de ejecutar */
+.execute-btn:hover:not(:disabled) {
+  background: var(--primary-hover); /* Color de hover usando variable CSS */
+}
+
+/* Estado deshabilitado del botón de ejecutar */
+.execute-btn:disabled {
+  background: var(--disabled-color); /* Color deshabilitado usando variable CSS */
+  cursor: not-allowed; /* Cambia el cursor para indicar que no está disponible */
+}
+
+/* ========== BOTONES DE LIMPIAR ========== */
+.clear-query-btn,
+.clear-results-btn {
+  background: var(--secondary-color); /* Color de fondo usando variable CSS */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+  padding: 8px 16px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  cursor: pointer; /* Cambia el cursor a mano */
+  font-weight: 500; /* Peso de la fuente */
+  transition: all 0.2s; /* Transición suave */
+}
+
+/* Efecto hover de los botones de limpiar */
+.clear-query-btn:hover,
+.clear-results-btn:hover {
+  background: var(--secondary-hover); /* Color de hover usando variable CSS */
+}
+
+/* ========== ADVERTENCIA SIN CONEXIÓN ========== */
+.no-connection-warning {
+  background: var(--warning-bg); /* Color de fondo de advertencia usando variable CSS */
+  color: var(--warning-text); /* Color del texto de advertencia usando variable CSS */
+  padding: 12px 20px; /* Espacio interno */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+  text-align: center; /* Centra el texto */
+}
+
+/* Párrafo de la advertencia */
+.no-connection-warning p {
+  margin: 0; /* Sin márgenes */
+  font-weight: 500; /* Peso de la fuente */
+}
+
+/* ========== SECCIÓN DE ENTRADA DE CONSULTA ========== */
+.query-input-section {
+  flex: 1; /* Toma todo el espacio disponible */
+  padding: 20px; /* Espacio interno */
+  min-height: 200px; /* Altura mínima */
+}
+
+/* ========== ÁREA DE TEXTO PARA LA CONSULTA ========== */
+.query-textarea {
+  width: 100%; /* Ancho completo */
+  height: 100%; /* Altura completa */
+  min-height: 180px; /* Altura mínima */
+  padding: 16px; /* Espacio interno */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+  border-radius: 6px; /* Bordes redondeados */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; /* Fuente monoespaciada para código */
+  font-size: 14px; /* Tamaño de la fuente */
+  line-height: 1.5; /* Altura de línea */
+  resize: vertical; /* Permite redimensionar solo verticalmente */
+  outline: none; /* Elimina el outline por defecto */
+}
+
+/* ========== ESTADO DE FOCO DEL TEXTAREA ========== */
+.query-textarea:focus {
+  border-color: var(--primary-color); /* Color del borde cuando está enfocado */
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1); /* Sombra sutil */
+}
+
+/* ========== ESTADO DESHABILITADO DEL TEXTAREA ========== */
+.query-textarea:disabled {
+  background: var(--disabled-bg); /* Color de fondo deshabilitado usando variable CSS */
+  color: var(--disabled-text); /* Color del texto deshabilitado usando variable CSS */
+  cursor: not-allowed; /* Cambia el cursor para indicar que no está disponible */
+}
+
+/* ========== SECCIÓN DE ERRORES ========== */
+.query-error {
+  background: var(--error-bg); /* Color de fondo de error usando variable CSS */
+  color: var(--error-text); /* Color del texto de error usando variable CSS */
+  padding: 16px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  margin: 16px 0; /* Márgenes verticales */
+  border-left: 4px solid var(--error-border); /* Borde izquierdo de error */
+}
+
+/* Título del error */
+.query-error h4 {
+  margin: 0 0 8px 0; /* Sin margen superior, 8px inferior */
+  font-size: 16px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* Párrafo del error */
+.query-error p {
+  margin: 0; /* Sin márgenes */
+  font-size: 14px; /* Tamaño de la fuente */
+}
+
+/* ========== SECCIÓN DE RESULTADOS ========== */
+.query-results {
+  padding: 20px; /* Espacio interno */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  border-radius: 8px; /* Bordes redondeados */
+  margin-top: 16px; /* Espacio superior */
+}
+
+/* ========== ENCABEZADO DE RESULTADOS ========== */
+.results-header {
+  display: flex; /* Habilita flexbox */
+  justify-content: space-between; /* Distribuye elementos */
+  align-items: center; /* Centra verticalmente */
+  margin-bottom: 16px; /* Espacio inferior */
+  padding-bottom: 12px; /* Espacio interno inferior */
+  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+}
+
+/* Título de resultados */
+.results-header h4 {
+  margin: 0; /* Sin márgenes */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 16px; /* Tamaño de la fuente */
+  font-weight: 600; /* Peso de la fuente */
+}
+
+/* ========== INFORMACIÓN DE EJECUCIÓN ========== */
+.execution-time,
+.rows-affected {
+  font-size: 12px; /* Tamaño de fuente pequeño */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  padding: 4px 8px; /* Espacio interno */
+  border-radius: 4px; /* Bordes redondeados */
+}
+
+/* ========== CONTENEDOR DE LA TABLA DE RESULTADOS ========== */
+.result-table-container {
+  overflow-x: auto; /* Permite scroll horizontal si la tabla es muy ancha */
+  border-radius: 8px; /* Bordes redondeados */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  margin-top: 16px; /* Espacio superior */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra sutil */
+}
+
+/* ========== TABLA DE RESULTADOS ========== */
+.result-table {
+  width: 100%; /* Ancho completo */
+  border-collapse: collapse; /* Elimina espacios entre celdas */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; /* Fuente monoespaciada */
+  font-size: 13px; /* Tamaño de fuente */
+}
+
+/* ========== ENCABEZADOS DE LA TABLA ========== */
+.result-table thead {
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+}
+
+.result-table th {
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  padding: 12px 16px; /* Espacio interno */
+  text-align: left; /* Alineación a la izquierda */
+  font-weight: 600; /* Peso de la fuente */
+  border-bottom: 2px solid var(--border-color); /* Borde inferior */
+  font-size: 13px; /* Tamaño de la fuente */
+  position: sticky; /* Mantiene los encabezados fijos */
+  top: 0; /* Posición fija en la parte superior */
+  z-index: 10; /* Capa superior */
+  white-space: nowrap; /* Evita que el texto se rompa */
+  min-width: 120px; /* Ancho mínimo para las columnas */
+}
+
+/* ========== CUERPO DE LA TABLA ========== */
+.result-table tbody {
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+}
+
+/* ========== FILAS DE LA TABLA ========== */
+.result-table tr {
+  border-bottom: 1px solid var(--border-color); /* Borde inferior */
+  transition: background-color 0.2s; /* Transición suave */
+}
+
+/* ========== EFECTO HOVER EN FILAS ========== */
+.result-table tbody tr:hover {
+  background: var(--hover-bg); /* Color de fondo al pasar el mouse usando variable CSS */
+}
+
+/* ========== CELDAS DE LA TABLA ========== */
+.result-table td {
+  padding: 10px 16px; /* Espacio interno */
+  border-bottom: 1px solid var(--border-color); /* Borde inferior */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  font-size: 13px; /* Tamaño de la fuente */
+  vertical-align: top; /* Alineación vertical superior */
+  word-break: break-word; /* Permite que las palabras largas se rompan */
+  max-width: 300px; /* Ancho máximo de las celdas */
+  overflow: hidden; /* Oculta contenido que se salga */
+  text-overflow: ellipsis; /* Muestra ... si el texto es muy largo */
+}
+
+/* ========== CELDAS CON VALORES NULL ========== */
+.result-table td:empty::before {
+  content: 'NULL'; /* Muestra NULL para celdas vacías */
+  color: var(--text-secondary); /* Color del texto secundario */
+  font-style: italic; /* Texto en cursiva */
+}
+
+/* ========== CELDAS CON VALORES ESPECIALES ========== */
+.result-table td.null-value {
+  color: var(--text-secondary); /* Color del texto secundario */
+  font-style: italic; /* Texto en cursiva */
+}
+
+/* ========== INFORMACIÓN DE LA EJECUCIÓN ========== */
+.result-info {
+  display: flex; /* Habilita flexbox */
+  justify-content: space-between; /* Distribuye elementos */
+  align-items: center; /* Centra verticalmente */
+  padding: 12px 16px; /* Espacio interno */
+  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
+  border-radius: 6px 6px 0 0; /* Bordes redondeados solo arriba */
+  border-bottom: 1px solid var(--border-color); /* Borde inferior */
+  margin-bottom: 0; /* Sin margen inferior */
+}
+
+.execution-time,
+.rows-affected {
+  font-size: 12px; /* Tamaño de fuente pequeño */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  padding: 4px 8px; /* Espacio interno */
+  border-radius: 4px; /* Bordes redondeados */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+}
+
+/* ========== MENSAJE SI NO HAY DATOS ========== */
+.no-data-message {
+  text-align: center; /* Centra el texto */
+  padding: 40px 20px; /* Espacio interno */
+  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
+  font-style: italic; /* Texto en cursiva */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  border-radius: 6px; /* Bordes redondeados */
+  border: 1px solid var(--border-color); /* Borde usando variable CSS */
+  margin-top: 16px; /* Espacio superior */
+}
+
+.no-data-message p {
+  margin: 0; /* Sin márgenes */
+  font-size: 14px; /* Tamaño de la fuente */
+}
+
+/* ========== MENSAJE DE ERROR ========== */
+.error-message {
+  background: var(--error-bg); /* Color de fondo de error usando variable CSS */
+  color: var(--error-text); /* Color del texto de error usando variable CSS */
+  padding: 16px; /* Espacio interno */
+  border-radius: 6px; /* Bordes redondeados */
+  margin: 16px 0; /* Márgenes verticales */
+  border-left: 4px solid var(--error-border); /* Borde izquierdo de error */
+}
+
+.error-message p {
+  margin: 0; /* Sin márgenes */
+  font-size: 14px; /* Tamaño de la fuente */
+  font-weight: 500; /* Peso de la fuente */
+}
+
+/* ========== SECCIÓN DE RESULTADOS ========== */
+.query-results {
+  padding: 20px; /* Espacio interno */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  border-radius: 8px; /* Bordes redondeados */
+  margin-top: 16px; /* Espacio superior */
+}
+
+/* ========== MEDIA QUERIES PARA RESPONSIVIDAD ========== */
+@media (max-width: 768px) {
+  /* Estilos para pantallas pequeñas (tablets y móviles) */
+  
+  .result-table-container {
+    margin-top: 12px; /* Reduce el espacio superior */
+  }
+  
+  .result-table th,
+  .result-table td {
+    padding: 8px 12px; /* Reduce el espacio interno */
+    font-size: 12px; /* Reduce el tamaño de la fuente */
+  }
+  
+  .result-info {
+    flex-direction: column; /* Organiza elementos verticalmente */
+    gap: 8px; /* Espacio entre elementos */
+    align-items: flex-start; /* Alinea elementos a la izquierda */
+  }
+  
+  .execution-time,
+  .rows-affected {
+    font-size: 11px; /* Reduce el tamaño de la fuente */
+    padding: 2px 6px; /* Reduce el espacio interno */
+  }
+}

@@ -1,18 +1,27 @@
 const express = require('express');
-const databaseController = require('../controllers/databaseController');
+const DatabaseController = require('../controllers/databaseController');
 
 const router = express.Router();
 
-// Rutas para conexiones
-router.post('/connect', databaseController.connectToDatabase);
-router.get('/connections', databaseController.getActiveConnections);
-router.delete('/disconnect/:connectionId', databaseController.disconnectFromDatabase);
 
-// Rutas para consultas
-router.post('/query/:connectionId', databaseController.executeQuery);
+router.post('/test', DatabaseController.testConnection);
+router.post('/add', DatabaseController.addConnection);
+router.get('/all', DatabaseController.getAllConnections);
+router.get('/active', DatabaseController.getActiveConnections);
+router.delete('/:connectionId', DatabaseController.removeConnection);
 
-// Rutas para esquemas y tablas
-router.get('/schemas/:connectionId', databaseController.getSchemas);
-router.get('/tables/:connectionId/:schemaName', databaseController.getTables);
 
-module.exports = router; 
+router.post('/:connectionId/connect', DatabaseController.connectToDatabase);
+router.post('/:connectionId/disconnect', DatabaseController.disconnectFromDatabase);
+
+
+router.post('/:connectionId/query', DatabaseController.executeQuery);
+router.get('/:connectionId/schemas', DatabaseController.getSchemas);
+router.get('/:connectionId/schemas/:schemaName/tables', DatabaseController.getTables);
+router.get('/:connectionId/tables/:tableName/columns', DatabaseController.getTableColumns);
+
+
+router.post('/health-check', DatabaseController.checkConnectionsHealth);
+router.post('/close-all', DatabaseController.closeAllConnections);
+
+module.exports = router;
