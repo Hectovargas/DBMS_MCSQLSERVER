@@ -41,20 +41,3 @@
   cursor: not-allowed; /* Cambia el cursor para indicar que no está disponible */
   opacity: 0.6; /* Hace la pestaña semi-transparente */
 }
-
-/* ========== MEDIA QUERIES PARA RESPONSIVIDAD ========== */
-@media (max-width: 768px) {
-  /* Estilos para pantallas pequeñas (tablets y móviles) */
-  
-  /* Contenedor de pestañas responsivo */
-  .navigation-tabs {
-    padding: 0 10px; /* Reduce el espacio interno horizontal */
-  }
-  
-  /* Botones de pestañas responsivos */
-  .nav-tab {
-    padding: 10px 16px; /* Reduce el espacio interno */
-    font-size: 13px; /* Reduce el tamaño de la fuente */
-    min-width: 100px; /* Reduce el ancho mínimo */
-  }
-}

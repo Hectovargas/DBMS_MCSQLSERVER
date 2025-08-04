@@ -506,7 +506,6 @@ class databaseManager {
             const result = await request.query(query);
             const executionTime = Date.now() - startTime;
 
-            // Extraemos las columnas de los metadatos del recordset
             let columns: { name: string; type: string }[] = [];
             if (result.recordset && result.recordset.length > 0) {
                 columns = Object.keys(result.recordset[0]).map(key => ({
@@ -524,14 +523,10 @@ class databaseManager {
             };
 
         } catch (error: any) {
+            const sqlErrorMsg = error.originalError?.info?.message || error.message;
             return {
                 success: false,
-                error: {
-                    message: error.message,
-                    code: error.code,
-                    lineNumber: error.lineNumber,
-                    procedure: error.procName
-                }
+                error: sqlErrorMsg 
             };
         }
     }
@@ -557,34 +552,42 @@ class databaseManager {
         t.name as table_name,
         s.name as schema_name,
         t.create_date,
-        t.modify_date,
-        p.rows as row_count
+        t.modify_date
         FROM sys.tables t INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
-        LEFT JOIN sys.dm_db_partition_stats p ON t.object_id = p.object_id AND p.index_id <= 1
-        WHERE s.name = @schemaName
-        ORDER BY t.name
+        WHERE s.name = @schemaName AND t.is_ms_shipped = 0
+        ORDER BY t.name;
         `;
         return await this.executeQuery(connectionId, queryto, { schemaName });
     }
 
     async getTablesColumns(connectionId: string, tableName: string, schemaName: string = 'dbo'): Promise<any> {
-        const queryto = `SELECT c.name as column_name,
-         t.name as data_type,
-         c.max_lenght,
-         c.precision,
-         c.scale,
-         c.is_nulleable,
-         c.is_identity,
-         dc.definition as default_value
+        const queryto = `
+          SELECT 
+    c.name as name,
+    t.name as dataType,
+    c.max_length as maxLength,
+    c.precision,
+    c.scale,
+    c.is_nullable as isNullable,
+    c.is_identity as isIdentity,
+    ISNULL(dc.definition, '') as defaultValue,
+    CASE WHEN pk.column_id IS NOT NULL THEN 1 ELSE 0 END as isPrimaryKey,
+    CASE WHEN fk.parent_column_id IS NOT NULL THEN 1 ELSE 0 END as isForeignKey,
+    '' as description
         FROM sys.columns c
-        INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
-        INNER JOIN sys.tables tb ON c.object_id = tb.object_id
-        INNER JOIN sys.schemas s ON tb.schema_id = s.schema_id
+        JOIN sys.types t ON c.user_type_id = t.user_type_id
+        JOIN sys.tables tb ON c.object_id = tb.object_id
+        JOIN sys.schemas s ON tb.schema_id = s.schema_id
         LEFT JOIN sys.default_constraints dc ON c.default_object_id = dc.object_id
+        LEFT JOIN sys.index_columns pk ON c.column_id = pk.column_id AND c.object_id = pk.object_id
+        AND EXISTS (SELECT 1 FROM sys.indexes i 
+                WHERE i.object_id = pk.object_id AND i.index_id = pk.index_id 
+                AND i.is_primary_key = 1)
+        LEFT JOIN sys.foreign_key_columns fk ON c.column_id = fk.parent_column_id AND c.object_id = fk.parent_object_id
         WHERE tb.name = @tableName AND s.name = @schemaName
-        ORDER BY c.column_id
-    `;
-    return await this.executeQuery(connectionId, queryto, { tableName, schemaName });
+        ORDER BY c.column_id;
+        `;
+        return await this.executeQuery(connectionId, queryto, { tableName, schemaName });
     }
 
     private generateConnectionId(): string {
@@ -615,10 +618,8 @@ class databaseManager {
         await this.saveConnections();
     }
 
-    // Métodos adicionales para gestión de seguridad
     async rotateEncryptionKey(): Promise<SqlServerConnectionResponse> {
         try {
-            // Guardar todas las contraseñas descifradas temporalmente
             const tempPasswords: { [key: string]: string } = {};
             
             Object.entries(this.connections).forEach(([id, connection]) => {
@@ -627,17 +628,14 @@ class databaseManager {
                 }
             });
 
-            // Rotar la clave maestra
             await this.passwordManager.rotateMasterKey();
 
-            // Re-cifrar todas las contraseñas con la nueva clave
             Object.entries(this.connections).forEach(([id, connection]) => {
                 if (tempPasswords[id]) {
                     connection.config.password = tempPasswords[id];
                 }
             });
 
-            // Guardar las conexiones con las contraseñas re-cifradas
             await this.saveConnections();
 
             return {

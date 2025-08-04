@@ -240,11 +240,11 @@ class ApiService {
   }
 
   // Obtener columnas de tabla
-  async getTableColumns(connectionId: string, tableName: string): Promise<any> {
+  async getTableColumns(connectionId: string, tableName: string, schemaName: string = 'dbo'): Promise<any> {
     try {
-      console.log('Obteniendo columnas de tabla:', { connectionId, tableName });
+      console.log('Obteniendo columnas de tabla:', { connectionId, tableName, schemaName });
       
-      const response = await fetch(`${API_BASE}/${connectionId}/tables/${tableName}/columns`);
+      const response = await fetch(`${API_BASE}/${connectionId}/tables/${tableName}/columns?schemaName=${encodeURIComponent(schemaName)}`);
       return await this.handleResponse(response);
     } catch (error) {
       console.error('Error en getTableColumns:', error);

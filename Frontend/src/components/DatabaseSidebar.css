@@ -193,15 +193,15 @@
 
 /* Efecto hover del botón conectar */
 .connect-btn:hover {
-  background: #218838; /* Color verde más oscuro al pasar el mouse */
+  background: #003e57; /* Color verde más oscuro al pasar el mouse */
 }
 
 /* ========== BOTÓN DE ELIMINAR ========== */
 .delete-btn {
-  background: #6c757d; /* Color gris para eliminar */
+  background: #f30000; /* Color gris para eliminar */
   color: white; /* Texto blanco */
   border: none; /* Sin borde */
-  padding: 6px 16px; /* Espacio interno */
+  padding: 6px 12px; /* Espacio interno */
   border-radius: 4px; /* Bordes redondeados */
   cursor: pointer; /* Cursor de mano */
   font-size: 12px; /* Tamaño de fuente */
@@ -209,9 +209,18 @@
   margin-top: 8px;
 }
 
+
+
+/* Contenedor de botones reorganizado */
+.connection-details > div {
+  display: flex;
+  flex-direction: column; /* Apila los botones verticalmente */
+  gap: 8px;
+}
+
 /* Efecto hover del botón eliminar */
 .delete-btn:hover {
-  background: #5a6268; /* Color gris más oscuro al pasar el mouse */
+  background: #5e0000; /* Color gris más oscuro al pasar el mouse */
 }
 
 /* ========== SECCIÓN DE ESQUEMAS ========== */
@@ -387,4 +396,147 @@
   font-style: italic;
   font-size: 13px;
   transition: color 0.3s; /* Transición suave */
+}
+
+.connection-actions button {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 0;
+  transition: all 0.2s;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Estilos específicos manteniendo el mismo tamaño */
+.connect-btn {
+  background: #28a745;
+  color: white;
+}
+
+.disconnect-btn {
+  background: #b49a03;
+  color: white;
+}
+
+.delete-btn {
+  background: #ec0404;
+  color: white;
+}
+
+.query-btn {
+  background: #007bff;
+  color: white;
+}
+
+/* Contenedor de botones */
+.connection-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+/* CONTENEDOR PRINCIPAL */
+.sidebar-container {
+  position: relative;
+  display: flex;
+  height: 100%;
+  background: var(--sidebar-bg);
+}
+
+/* SIDEBAR PRINCIPAL */
+.database-sidebar {
+  width: 300px;
+  height: 100%;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+  overflow-y: auto;
+  display: flex;
+  z-index: 1;
+  flex-direction: column;
+}
+
+/* ESTADOS DEL SIDEBAR */
+.database-sidebar.collapsed {
+  width: 0px;
+  min-width: 0px;
+}
+
+.database-sidebar.expanded {
+  width: 400px;
+  min-width: 400px;
+}
+
+/* BOTÓN TOGGLE EXTERNO */
+.sidebar-toggle {
+  border-radius: 0;
+  width: 30px;        /* Ancho del botón */
+  height: 24px;       /* Altura del botón (puedes ajustar) */
+  /*padding: 0 5px;*/  /* Espacio interno horizontal */
+  position: absolute;
+  right: -35px; /* Posición fuera del sidebar */
+  top: 18px;
+  width: 30px;
+  height: 30px;
+  background: var(--card-bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  background: var(--hover-bg);
+  transform: scale(1.1);
+}
+
+/* CONTENIDO DEL SIDEBAR */
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+/* HEADER DEL SIDEBAR */
+.sidebar-header {
+  padding: 15px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ESTILOS PARA ESTADO COLLAPSED */
+.database-sidebar.collapsed .sidebar-header {
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 5px;
+}
+
+.database-sidebar.collapsed .sidebar-header h3,
+.database-sidebar.collapsed .header-buttons {
+  display: none;
+}
+
+.database-sidebar.collapsed .connection-item {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.database-sidebar.collapsed .connection-name,
+.database-sidebar.collapsed .connection-status,
+.database-sidebar.collapsed .connection-content {
+  display: none;
 }

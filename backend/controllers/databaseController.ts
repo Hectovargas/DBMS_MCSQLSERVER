@@ -217,12 +217,13 @@ class databaseController {
         res.status(400).json(result);
       }
     } catch (error: any) {
+      const sqlErrorMsg = error.originalError?.info?.message || error.message;
       res.status(500).json({
-        success: false,
-        message: 'Error al ejecutar consulta',
-        error: { message: error.message }
+          success: false,
+          error: sqlErrorMsg 
       });
-    }
+  }
+  
   }
 
   async getSchemas(req: any, res: any): Promise<void> {
@@ -284,7 +285,7 @@ class databaseController {
   async getTableColumns(req: any, res: any): Promise<void> {
     try {
       const { connectionId, tableName } = req.params;
-      const { schemaName = 'dbo' } = req.query as { schemaName?: string };
+      const { schemaName = 'dbo' } = req.query;
       
       if (!connectionId || !tableName) {
         res.status(400).json({

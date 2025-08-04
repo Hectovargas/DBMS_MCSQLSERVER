@@ -124,58 +124,58 @@
   margin-bottom: 2rem; /* Espacio inferior */
   line-height: 1.6; /* Altura de línea para mejor legibilidad */
 }
-
-/* ========== ACCIONES DE BIENVENIDA ========== */
+/* Contenedor de botones */
 .welcome-actions {
-  display: flex; /* Habilita flexbox */
-  gap: 16px; /* Espacio entre botones */
-  justify-content: center; /* Centra los botones horizontalmente */
-  flex-wrap: wrap; /* Permite que los botones se envuelvan en pantallas pequeñas */
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: end; /* Esto es clave para la alineación */
 }
 
-/* ========== BOTÓN DE CONECTAR ========== */
-.welcome-message .connect-btn {
-  background: #007bff; /* Color de fondo azul */
-  color: white; /* Color del texto */
-  border: none; /* Sin borde */
-  padding: 12px 24px; /* Espacio interno */
-  border-radius: 6px; /* Bordes redondeados */
-  font-size: 16px; /* Tamaño de la fuente */
-  font-weight: 500; /* Peso de la fuente */
-  cursor: pointer; /* Cambia el cursor a mano */
-  transition: background-color 0.2s; /* Transición suave */
-}
-
-/* Efecto hover del botón de conectar */
-.welcome-message .connect-btn:hover {
-  background: #0056b3; /* Color azul más oscuro al pasar el mouse */
-}
-
-/* ========== BOTÓN DE CONSULTA ========== */
+/* Estilo base para ambos botones */
+.connect-btn, 
 .query-btn {
-  background: #28a745; /* Color de fondo verde */
-  color: white; /* Color del texto */
-  border: none; /* Sin borde */
-  padding: 12px 24px; /* Espacio interno */
-  border-radius: 6px; /* Bordes redondeados */
-  font-size: 16px; /* Tamaño de la fuente */
-  font-weight: 500; /* Peso de la fuente */
-  cursor: pointer; /* Cambia el cursor a mano */
-  transition: background-color 0.2s; /* Transición suave */
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  height: 50px; /* Altura fija */
+  min-width: 180px;
+  display: inline-flex; /* Usa flex para mejor alineación */
+  align-items: center;
+  justify-content: center;
+  border: none;
+  vertical-align: middle; /* Alineación vertical consistente */
+  line-height: 1.5; /* Misma línea base */
+  box-sizing: border-box; /* Incluye padding en la altura */
 }
 
-/* Efecto hover del botón de consulta */
+/* Estilos específicos para cada botón */
+.connect-btn {
+  background: #007bff;
+  color: white;
+}
+
+.query-btn {
+  background: #28a745;
+  color: white;
+}
+
+/* Estados hover */
+.connect-btn:hover, 
 .query-btn:hover:not(:disabled) {
-  background: #218838; /* Color verde más oscuro al pasar el mouse */
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* Estado deshabilitado del botón de consulta */
+/* Estado deshabilitado */
 .query-btn:disabled {
-  background: #6c757d; /* Color gris cuando está deshabilitado */
-  cursor: not-allowed; /* Cambia el cursor para indicar que no está disponible */
-  opacity: 0.6; /* Hace el botón semi-transparente */
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
-
 /* ========== TARJETAS DE CONTENIDO ========== */
 .content-card {
   background: var(--card-bg); /* Color de fondo usando variable CSS */
@@ -232,35 +232,3 @@
   font-size: 14px; /* Tamaño de la fuente */
 }
 
-/* ========== MEDIA QUERIES PARA RESPONSIVIDAD ========== */
-@media (max-width: 768px) {
-  /* Estilos para pantallas pequeñas (tablets y móviles) */
-  
-  /* Header responsivo */
-  .header {
-    padding: 1rem; /* Reduce el espacio interno */
-    flex-direction: column; /* Organiza elementos verticalmente */
-    gap: 1rem; /* Espacio entre elementos */
-  }
-  
-  /* Header right responsivo */
-  .header-right {
-    gap: 8px; /* Reduce el espacio entre botones */
-  }
-  
-  /* Contenido principal responsivo */
-  .main-content {
-    padding: 1rem; /* Reduce el espacio interno */
-  }
-  
-  /* Tarjetas de contenido responsivas */
-  .content-card {
-    padding: 1.5rem; /* Reduce el espacio interno */
-  }
-  
-  /* Grid de características responsivo */
-  .feature-grid {
-    grid-template-columns: 1fr; /* Una sola columna en pantallas pequeñas */
-    gap: 1rem; /* Reduce el espacio entre elementos */
-  }
-}

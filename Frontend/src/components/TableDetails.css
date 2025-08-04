@@ -10,6 +10,7 @@
 
 /* ========== ENCABEZADO DE DETALLES DE TABLA ========== */
 .table-details-header {
+  text-align: center;
   display: flex; /* Habilita flexbox */
   justify-content: space-between; /* Distribuye elementos: título a la izquierda, esquema a la derecha */
   align-items: center; /* Centra verticalmente los elementos */
@@ -20,6 +21,7 @@
 
 /* ========== TÍTULO DE LA TABLA ========== */
 .table-details-header h3 {
+  text-align: center;
   margin: 0; /* Sin márgenes */
   color: var(--text-primary); /* Color del texto usando variable CSS */
   font-size: 18px; /* Tamaño de la fuente */
@@ -143,6 +145,7 @@
 
 /* ========== PESTAÑA: COLUMNAS ========== */
 .columns-tab {
+  text-align: center;
   display: flex; /* Habilita flexbox */
   flex-direction: column; /* Organiza elementos verticalmente */
   gap: 16px; /* Espacio entre elementos */
@@ -150,6 +153,7 @@
 
 /* ========== ENCABEZADO DE COLUMNAS ========== */
 .columns-header {
+  text-align: center;
   display: flex; /* Habilita flexbox */
   justify-content: space-between; /* Distribuye elementos */
   align-items: center; /* Centra verticalmente */
@@ -159,6 +163,7 @@
 
 /* Título de columnas */
 .columns-header h4 {
+  text-align: center;
   margin: 0; /* Sin márgenes */
   color: var(--text-primary); /* Color del texto usando variable CSS */
   font-size: 16px; /* Tamaño de la fuente */
@@ -193,7 +198,7 @@
   background: var(--bg-secondary); /* Color de fondo usando variable CSS */
   color: var(--text-primary); /* Color del texto usando variable CSS */
   padding: 12px 16px; /* Espacio interno */
-  text-align: left; /* Alineación a la izquierda */
+  text-align: center;
   font-weight: 600; /* Peso de la fuente */
   border-bottom: 2px solid var(--border-color); /* Borde inferior */
   font-size: 14px; /* Tamaño de la fuente */
@@ -201,6 +206,7 @@
 
 /* ========== CELDAS DE LA TABLA DE COLUMNAS ========== */
 .columns-table td {
+  text-align: center;
   padding: 12px 16px; /* Espacio interno */
   border-bottom: 1px solid var(--border-color); /* Borde inferior */
   color: var(--text-primary); /* Color del texto usando variable CSS */
@@ -210,24 +216,27 @@
 
 /* ========== EFECTO HOVER EN FILAS DE COLUMNAS ========== */
 .columns-table tr:hover {
+  text-align: center;
   background: var(--hover-bg); /* Color de fondo al pasar el mouse usando variable CSS */
 }
 
 /* ========== NOMBRE DE COLUMNA ========== */
 .column-name {
+  text-align: center;
   display: flex; /* Habilita flexbox */
   align-items: center; /* Centra verticalmente */
-  gap: 8px; /* Espacio entre icono y texto */
   font-weight: 500; /* Peso de la fuente */
 }
 
 /* ========== ICONO DE COLUMNA ========== */
 .column-icon {
+  text-align: center;
   font-size: 16px; /* Tamaño del icono */
 }
 
 /* ========== TIPO DE DATO ========== */
 .data-type {
+  text-align: center;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; /* Fuente monoespaciada */
   font-size: 13px; /* Tamaño de la fuente */
   color: var(--primary-color); /* Color del texto usando variable CSS */
@@ -362,6 +371,18 @@
   word-break: break-word; /* Permite que las palabras largas se rompan */
 }
 
+.query-section {
+  padding: 16px; /* Espacio interno */
+  background: var(--bg-primary); /* Color de fondo usando variable CSS */
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; /* Fuente monoespaciada */
+  font-size: 13px; /* Tamaño de la fuente */
+  line-height: 1.5; /* Altura de línea */
+  color: var(--text-primary); /* Color del texto usando variable CSS */
+  white-space: pre-wrap; /* Preserva espacios y saltos de línea */
+  word-break: break-word; /* Permite que las palabras largas se rompan */
+}
+
+
 /* ========== CONSEJOS DE DATOS ========== */
 .data-tips {
   background: var(--info-bg); /* Color de fondo de información usando variable CSS */
@@ -465,50 +486,4 @@
   color: var(--text-primary); /* Color del texto usando variable CSS */
   font-weight: 600; /* Peso de la fuente */
   margin-top: 4px; /* Espacio superior */
-}
-
-/* ========== MEDIA QUERIES PARA RESPONSIVIDAD ========== */
-@media (max-width: 768px) {
-  /* Estilos para pantallas pequeñas (tablets y móviles) */
-  
-  /* Header responsivo */
-  .table-details-header {
-    flex-direction: column; /* Organiza elementos verticalmente */
-    gap: 8px; /* Espacio entre elementos */
-    align-items: flex-start; /* Alinea elementos a la izquierda */
-  }
-  
-  /* Pestañas responsivas */
-  .table-tabs {
-    flex-direction: column; /* Organiza elementos verticalmente */
-  }
-  
-  /* Botones de pestañas responsivos */
-  .tab-btn {
-    text-align: left; /* Alinea texto a la izquierda */
-    border-bottom: none; /* Elimina borde inferior */
-    border-left: 2px solid transparent; /* Borde izquierdo transparente */
-  }
-  
-  /* Estado activo responsivo */
-  .tab-btn.active {
-    border-left-color: var(--primary-color); /* Color del borde izquierdo activo */
-    border-bottom-color: transparent; /* Elimina borde inferior activo */
-  }
-  
-  /* Tabla responsiva */
-  .columns-table {
-    font-size: 12px; /* Reduce el tamaño de la fuente */
-  }
-  
-  /* Celdas de tabla responsivas */
-  .columns-table th,
-  .columns-table td {
-    padding: 8px 12px; /* Reduce el espacio interno */
-  }
-  
-  /* Grid de resumen responsivo */
-  .summary-grid {
-    grid-template-columns: 1fr; /* Una sola columna en pantallas pequeñas */
-  }
 }

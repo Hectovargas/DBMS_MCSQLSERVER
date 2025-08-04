@@ -1,6 +1,6 @@
 // ========== IMPORTS ==========
 // Importamos React y el hook useState para manejar el estado del formulario
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // Importamos el servicio para hacer llamadas a la API del backend
 import apiService from '../services/apiService';
 // Importamos el tipo TypeScript para la configuración de conexión
@@ -12,10 +12,12 @@ import './ConnectionForm.css';
 // Definimos la interfaz TypeScript para las props que recibe el componente
 interface ConnectionFormProps {
   onConnectionSuccess: () => void; // Callback que se ejecuta cuando se crea exitosamente una conexión
+  isOpen: boolean; // Controla si el modal está abierto
+  onClose: () => void; // Callback para cerrar el modal
 }
 
 // ========== COMPONENTE PRINCIPAL ==========
-const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess }) => {
+const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, isOpen, onClose }) => {
   // ========== ESTADOS DEL FORMULARIO ==========
   
   // Estado para almacenar todos los datos del formulario
@@ -41,6 +43,25 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess }) 
   // Estado para distinguir entre modo de prueba y modo de guardado
   const [testMode, setTestMode] = useState(false);
 
+  // ========== EFECTO PARA LIMPIAR FORMULARIO ==========
+  // Limpiamos el formulario cuando se abre el modal
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        name: '',
+        server: '',
+        database: '',
+        username: '',
+        password: '',
+        port: 1433
+      });
+      setError('');
+      setSuccess('');
+      setLoading(false);
+      setTestMode(false);
+    }
+  }, [isOpen]);
+
   // ========== FUNCIONES MANEJADORAS ==========
   
   // Función que se ejecuta cada vez que el usuario cambia un campo del formulario
@@ -58,6 +79,20 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess }) 
       ...prev, // Mantenemos todos los valores anteriores
       [name]: name === 'port' ? parseInt(value) || 1433 : value // Si es el puerto, lo convertimos a número
     }));
+  };
+
+  // Función para manejar el cierre del modal
+  const handleClose = () => {
+    if (!loading) {
+      onClose();
+    }
+  };
+
+  // Función para manejar el clic fuera del modal
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget && !loading) {
+      onClose();
+    }
   };
 
   // Función para probar la conexión antes de guardarla
@@ -122,17 +157,12 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess }) 
       
       if (result.success) {
         setSuccess('✅ Conexión agregada exitosamente');
-        // Limpiamos el formulario después de un guardado exitoso
-        setFormData({
-          name: '',
-          server: '',
-          database: '',
-          username: '',
-          password: '',
-          port: 1433
-        });
         // Notificamos al componente padre que la conexión se creó exitosamente
         onConnectionSuccess();
+        // Cerramos el modal después de un breve delay para mostrar el mensaje de éxito
+        setTimeout(() => {
+          onClose();
+        }, 1500);
         
       } else {
         setError(result.message || 'Error al agregar la conexión');
@@ -148,141 +178,156 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess }) 
   };
 
   // ========== RENDERIZADO DEL COMPONENTE ==========
+  if (!isOpen) return null;
+
   return (
-    // Contenedor principal del formulario
-    <div className="connection-form-container">
-      {/* Título del formulario */}
-      <h2>Nueva Conexión de Base de Datos</h2>
-      
-      {/* ========== MENSAJES DE ESTADO ========== */}
-      {/* Mostramos mensaje de error si existe */}
-      {error && (
-        <div className="error-message">
-          <strong>❌ Error:</strong> {error}
-        </div>
-      )}
-      {/* Mostramos mensaje de éxito si existe */}
-      {success && (
-        <div className="success-message">
-          <strong>✅ Éxito:</strong> {success}
-        </div>
-      )}
-
-      {/* ========== FORMULARIO PRINCIPAL ========== */}
-      <form onSubmit={handleSubmit} className="connection-form">
-        {/* ========== CAMPO: NOMBRE DE LA CONEXIÓN ========== */}
-        <div className="form-group">
-          <label htmlFor="name">Nombre de la Conexión *</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            required
-            placeholder="Mi Base de Datos"
+    // Overlay del modal
+    <div className="modal-overlay" onClick={handleBackdropClick}>
+      {/* Contenedor principal del modal */}
+      <div className="modal-container">
+        {/* Header del modal */}
+        <div className="modal-header">
+          <h2>Nueva Conexión de Base de Datos</h2>
+          <button 
+            className="modal-close-btn" 
+            onClick={handleClose}
             disabled={loading}
-          />
-        </div>
-
-        {/* ========== CAMPO: SERVIDOR ========== */}
-        <div className="form-group">
-          <label htmlFor="server">Servidor *</label>
-          <input
-            type="text"
-            id="server"
-            name="server"
-            value={formData.server}
-            onChange={handleInputChange}
-            required
-            placeholder="localhost o 192.168.1.100"
-            disabled={loading}
-          />
-        </div>
-
-        {/* ========== CAMPO: BASE DE DATOS ========== */}
-        <div className="form-group">
-          <label htmlFor="database">Base de Datos *</label>
-          <input
-            type="text"
-            id="database"
-            name="database"
-            value={formData.database}
-            onChange={handleInputChange}
-            required
-            placeholder="nombre_base_datos"
-            disabled={loading}
-          />
-        </div>
-
-        {/* ========== CAMPO: USUARIO ========== */}
-        <div className="form-group">
-          <label htmlFor="username">Usuario *</label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            value={formData.username}
-            onChange={handleInputChange}
-            required
-            placeholder="usuario"
-            disabled={loading}
-          />
-        </div>
-
-        {/* ========== CAMPO: CONTRASEÑA ========== */}
-        <div className="form-group">
-          <label htmlFor="password">Contraseña *</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={formData.password}
-            onChange={handleInputChange}
-            required
-            placeholder="contraseña"
-            disabled={loading}
-          />
-        </div>
-
-        {/* ========== CAMPO: PUERTO ========== */}
-        <div className="form-group">
-          <label htmlFor="port">Puerto</label>
-          <input
-            type="number"
-            id="port"
-            name="port"
-            value={formData.port}
-            onChange={handleInputChange}
-            min="1"
-            max="65535"
-            placeholder="1433"
-            disabled={loading}
-          />
-        </div>
-
-        {/* ========== BOTONES DE ACCIÓN ========== */}
-        <div className="form-actions">
-          {/* Botón para probar la conexión */}
-          <button
-            type="button"
-            className={`test-btn ${loading && testMode ? 'loading' : ''}`}
-            onClick={handleTestConnection}
-            disabled={loading || !formData.server || !formData.database}
+            title="Cerrar"
           >
-            {loading && testMode ? 'Probando...' : 'Probar Conexión'}
-          </button>
-          
-          {/* Botón para guardar la conexión */}
-          <button
-            type="submit"
-            className={`test-btn ${loading && !testMode ? 'loading' : ''}`}
-            disabled={loading || !formData.name || !formData.server || !formData.database}
-          >
-            {loading && !testMode ? 'Agregando...' : 'Agregar Conexión'}
+            ✕
           </button>
         </div>
-      </form>
+        
+        {/* ========== MENSAJES DE ESTADO ========== */}
+        {/* Mostramos mensaje de error si existe */}
+        {error && (
+          <div className="error-message">
+            <strong>❌ Error:</strong> {error}
+          </div>
+        )}
+        {/* Mostramos mensaje de éxito si existe */}
+        {success && (
+          <div className="success-message">
+            <strong>✅ Éxito:</strong> {success}
+          </div>
+        )}
+
+        {/* ========== FORMULARIO PRINCIPAL ========== */}
+        <form onSubmit={handleSubmit} className="connection-form">
+          {/* ========== CAMPO: NOMBRE DE LA CONEXIÓN ========== */}
+          <div className="form-group">
+            <label htmlFor="name">Nombre de la Conexión *</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
+              placeholder="Mi Base de Datos"
+              disabled={loading}
+            />
+          </div>
+
+          {/* ========== CAMPO: SERVIDOR ========== */}
+          <div className="form-group">
+            <label htmlFor="server">Servidor *</label>
+            <input
+              type="text"
+              id="server"
+              name="server"
+              value={formData.server}
+              onChange={handleInputChange}
+              required
+              placeholder="localhost o 192.168.1.100"
+              disabled={loading}
+            />
+          </div>
+
+          {/* ========== CAMPO: BASE DE DATOS ========== */}
+          <div className="form-group">
+            <label htmlFor="database">Base de Datos *</label>
+            <input
+              type="text"
+              id="database"
+              name="database"
+              value={formData.database}
+              onChange={handleInputChange}
+              required
+              placeholder="nombre_base_datos"
+              disabled={loading}
+            />
+          </div>
+
+          {/* ========== CAMPO: USUARIO ========== */}
+          <div className="form-group">
+            <label htmlFor="username">Usuario *</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              required
+              placeholder="usuario"
+              disabled={loading}
+            />
+          </div>
+
+          {/* ========== CAMPO: CONTRASEÑA ========== */}
+          <div className="form-group">
+            <label htmlFor="password">Contraseña *</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              required
+              placeholder="contraseña"
+              disabled={loading}
+            />
+          </div>
+
+          {/* ========== CAMPO: PUERTO ========== */}
+          <div className="form-group">
+            <label htmlFor="port">Puerto</label>
+            <input
+              type="number"
+              id="port"
+              name="port"
+              value={formData.port}
+              onChange={handleInputChange}
+              min="1"
+              max="65535"
+              placeholder="1433"
+              disabled={loading}
+            />
+          </div>
+
+          {/* ========== BOTONES DE ACCIÓN ========== */}
+          <div className="form-actions">
+            {/* Botón para probar la conexión */}
+            <button
+              type="button"
+              className={`test-btn ${loading && testMode ? 'loading' : ''}`}
+              onClick={handleTestConnection}
+              disabled={loading || !formData.server || !formData.database}
+            >
+              {loading && testMode ? 'Probando...' : 'Probar Conexión'}
+            </button>
+            
+            {/* Botón para guardar la conexión */}
+            <button
+              type="submit"
+              className={`test-btn ${loading && !testMode ? 'loading' : ''}`}
+              disabled={loading || !formData.name || !formData.server || !formData.database}
+            >
+              {loading && !testMode ? 'Agregando...' : 'Agregar Conexión'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

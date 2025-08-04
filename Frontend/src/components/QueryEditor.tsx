@@ -1,4 +1,8 @@
 // ========== IMPORTS ==========
+import Editor from 'react-simple-code-editor';
+import { highlight, languages } from 'prismjs';
+import 'prismjs/components/prism-sql';
+import 'prismjs/themes/prism-tomorrow.css';
 // Importamos React y los hooks necesarios para el componente
 import React, { useState, useEffect } from 'react';
 // Importamos el servicio para ejecutar consultas SQL
@@ -165,16 +169,26 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, onQueryExecuted
 
       {/* ========== SECCIÓN DE ENTRADA DE CONSULTA ========== */}
       <div className="query-input-section">
-        {/* Área de texto para escribir la consulta SQL */}
-        <textarea
-          className="query-textarea"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Escribe tu consulta SQL aquí..."
-          disabled={!connectionId} // Deshabilitado si no hay conexión
-        />
-      </div>
-
+  <Editor
+    value={query}
+    onValueChange={(code) => setQuery(code)}
+    highlight={(code) => highlight(code, languages.sql, 'sql')}
+    padding={16}
+    style={{
+      fontFamily: '"Monaco", "Menlo", "Ubuntu Mono", monospace',
+      fontSize: 14,
+      backgroundColor: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
+      border: '1px solid var(--border-color)',
+      borderRadius: '6px',
+      minHeight: '180px',
+      lineHeight: 1.5
+    }}
+    textareaClassName="query-textarea"
+    placeholder="Escribe tu consulta SQL aquí..."
+    disabled={!connectionId}
+  />
+</div>
       {/* ========== SECCIÓN DE RESULTADOS ========== */}
       {result && result.success && (
         <div className="query-results">
