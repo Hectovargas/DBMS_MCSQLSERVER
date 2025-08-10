@@ -22,6 +22,8 @@ interface TableDetailsProps {
 
 // ========== COMPONENTE PRINCIPAL ==========
 const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, schemaName }) => {
+  console.log('TableDetails rendered with props:', { connectionId, tableName, schemaName });
+  
   // ========== ESTADOS DEL COMPONENTE ==========
 
   // Estado para almacenar las columnas de la tabla
@@ -53,25 +55,57 @@ const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, sc
 
   // Función para transformar los datos de las columnas
   const transformColumnData = (columns: any[]): Column[] => {
-    return columns.map(col => ({
-      name: col.name || '',
-      dataType: col.dataType || 'unknown',
-      maxLength: col.maxLength,
-      precision: col.precision,
-      scale: col.scale,
-      isNullable: Boolean(col.isNullable),
-      isIdentity: Boolean(col.isIdentity),
-      isPrimaryKey: Boolean(col.isPrimaryKey),
-      isForeignKey: Boolean(col.isForeignKey),
-      defaultValue: col.defaultValue || '',
-      description: col.description || ''
-    }));
-  };
+    const mapFirebirdTypeCodeToName = (typeCode: any): string => {
+      const numericCode = typeof typeCode === 'number' ? typeCode : parseInt(String(typeCode), 10);
+      switch (numericCode) {
+        case 7: return 'SMALLINT';
+        case 8: return 'INTEGER';
+        case 9: return 'QUAD';
+        case 10: return 'FLOAT';
+        case 11: return 'D_FLOAT';
+        case 12: return 'DATE';
+        case 13: return 'TIME';
+        case 14: return 'CHAR';
+        case 16: return 'INT64';
+        case 27: return 'DOUBLE';
+        case 35: return 'TIMESTAMP';
+        case 37: return 'VARCHAR';
+        case 40: return 'CSTRING';
+        case 261: return 'BLOB';
+        default: return 'UNKNOWN';
+      }
+    };
 
+    return columns.map(col => {
+      const rawType = col.dataType ?? col.DATATYPE ?? 'unknown';
+      const normalizedType = typeof rawType === 'number' || /^\d+$/.test(String(rawType))
+        ? mapFirebirdTypeCodeToName(rawType)
+        : String(rawType).trim();
+
+      return {
+        name: (col.name || col.NAME || '').trim(),
+        dataType: normalizedType,
+        maxLength: col.maxLength || col.MAXLENGTH,
+        precision: col.precision || col.PRECISION || undefined,
+        scale: col.scale || col.SCALE,
+        isNullable: !(col.isNullable === 0 || col.ISNULLABLE === 0 || col.isNullable === false),
+        isIdentity: Boolean(col.isIdentity || col.ISIDENTITY),
+        isPrimaryKey: Boolean(col.isPrimaryKey || col.ISPRIMARYKEY),
+        isForeignKey: Boolean(col.isForeignKey || col.ISFOREIGNKEY),
+        defaultValue: (col.defaultValue || col.DEFAULTVALUE || '').trim(),
+        description: (col.description || col.DESCRIPTION || '').trim()
+      };
+    });
+  };
   // Función para cargar las columnas de la tabla desde la API
   const loadTableColumns = async () => {
     // Validación: necesitamos conexión y nombre de tabla
-    if (!connectionId || !tableName) return;
+    if (!connectionId || !tableName) {
+      console.log('Missing required props:', { connectionId, tableName });
+      return;
+    }
+
+    console.log('Loading table columns with params:', { connectionId, tableName, schemaName });
 
     // Preparamos el estado para la carga
     setLoading(true);
@@ -79,18 +113,23 @@ const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, sc
 
     try {
       // Llamamos a la API para obtener las columnas
-      const result = await apiService.getTableColumns(connectionId, tableName, schemaName || 'dbo');
+      const result = await apiService.getTableColumns(connectionId, tableName, schemaName || '');
+
+      console.log('API response:', result);
 
       if (result.success) {
         // Si la respuesta es exitosa, transformamos y guardamos las columnas
         const transformedColumns = transformColumnData(result.data || []);
+        console.log('Transformed columns:', transformedColumns);
         setColumns(transformedColumns);
       } else {
         // Si hay error en la respuesta, mostramos el mensaje
+        console.error('API error:', result);
         setError(result.message || 'Error al cargar las columnas');
       }
     } catch (err: any) {
       // Manejamos errores de red o del servidor
+      console.error('Network error:', err);
       setError(err.message || 'Error al cargar las columnas');
     } finally {
       // Siempre desactivamos el indicador de carga
@@ -135,47 +174,41 @@ const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, sc
 
   // Función para obtener el icono apropiado según el tipo de columna
   const getColumnIcon = (column: Column): string => {
-    if (column.isPrimaryKey) return '🔑'; // Llave primaria
-    if (column.isForeignKey) return '🔗'; // Llave foránea
-    if (column.isIdentity) return '🆔'; // Columna de identidad
+    if (column.isPrimaryKey) return '(PK)'; // Llave primaria
+    if (column.isForeignKey) return '(FK)'; // Llave foránea
+    if (column.isIdentity) return '(identy)'; // Columna de identidad
     return '';
   };
 
-  // Función para generar una consulta SELECT para la tabla
   const generateSelectQuery = (): string => {
-    if (!tableName || !schemaName) return '';
-
-    // Creamos una lista de nombres de columnas separados por comas
+    if (!tableName) return '';
+  
     const columnNames = columns.map(col => col.name).join(', ');
-    return `SELECT ${columnNames || '*'} FROM [${schemaName}].[${tableName}]`;
+    return `SELECT ${columnNames || '*'} FROM ${tableName}`;
   };
-
-  // Función para generar una consulta CREATE TABLE basada en la estructura actual
+  
   const generateCreateTableQuery = (): string => {
-    if (!tableName || !schemaName || columns.length === 0) return '';
-
-    // Generamos las definiciones de cada columna
+    if (!tableName || columns.length === 0) return '';
+  
     const columnDefinitions = columns.map(col => {
-      let definition = `  [${col.name}] ${getDataTypeDisplay(col)}`;
-
-      // Agregamos restricciones según las propiedades de la columna
+      let definition = `  ${col.name} ${getDataTypeDisplay(col)}`;
+  
       if (!col.isNullable) {
         definition += ' NOT NULL';
       }
-
+  
       if (col.isIdentity) {
-        definition += ' IDENTITY(1,1)';
+        definition += ' GENERATED BY DEFAULT AS IDENTITY';
       }
-
+  
       if (col.defaultValue) {
         definition += ` DEFAULT ${col.defaultValue}`;
       }
-
+  
       return definition;
     }).join(',\n');
-
-    // Retornamos la consulta CREATE TABLE completa
-    return `CREATE TABLE [${schemaName}].[${tableName}] (\n${columnDefinitions}\n);`;
+  
+    return `CREATE TABLE ${tableName} (\n${columnDefinitions}\n);`;
   };
 
   // ========== VALIDACIÓN DE PROPS ==========
@@ -184,7 +217,7 @@ const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, sc
     return (
       <div className="table-details">
         <div className="no-table-selected">
-          <p>⚠️ Selecciona una tabla del sidebar para ver sus detalles</p>
+          <p><span className="warning-icon"></span> Selecciona una tabla del sidebar para ver sus detalles</p>
         </div>
       </div>
     );
@@ -206,19 +239,22 @@ const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, sc
           className={`tab-btn ${activeTab === 'columns' ? 'active' : ''}`}
           onClick={() => setActiveTab('columns')}
         >
-          📋 Columnas
+          <span className="tab-icon columns-icon"></span>
+          Columnas
         </button>
         <button
           className={`tab-btn ${activeTab === 'data' ? 'active' : ''}`}
           onClick={() => setActiveTab('data')}
         >
-          📊 Datos
+          <span className="tab-icon data-icon"></span>
+          Datos
         </button>
         <button
           className={`tab-btn ${activeTab === 'structure' ? 'active' : ''}`}
           onClick={() => setActiveTab('structure')}
         >
-          🏗️ Estructura
+          <span className="tab-icon structure-icon"></span>
+          Estructura
         </button>
       </div>
 
@@ -232,7 +268,7 @@ const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, sc
       {/* ========== MENSAJE DE ERROR ========== */}
       {error && (
         <div className="error-message">
-          <p>❌ {error}</p>
+          <p><span className="error-icon"></span> {error}</p>
         </div>
       )}
 
@@ -257,7 +293,6 @@ const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, sc
                       <th>Escala</th>
                       <th>Presicion</th>
                       <th>Nulo</th>
-                      <th>Identity</th>
                       <th>Valor por Defecto</th>
                     </tr>
                   </thead>
@@ -272,7 +307,6 @@ const TableDetails: React.FC<TableDetailsProps> = ({ connectionId, tableName, sc
                         <td className='escala'>{column.scale || '--'}</td>
                         <td className="presicion">{column.precision || '--'}</td>
                         <td className="nullable">{column.isNullable ? 'SI' : 'NO'}</td>
-                        <td className="identity">{column.isIdentity ? 'SI' : 'NO'}</td>
                         <td className="default-value">{column.defaultValue || '--'}</td>
                       </tr>
                     ))}

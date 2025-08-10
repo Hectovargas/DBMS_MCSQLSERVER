@@ -1,5 +1,5 @@
 // Importamos React y los hooks que necesitamos
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 // Importamos el servicio para hacer llamadas a la API
 import apiService from '../services/apiService';
 // Importamos los tipos TypeScript para tener tipado fuerte
@@ -10,7 +10,7 @@ import './DatabaseSidebar.css';
 // Definimos la interfaz TypeScript para las props que recibe el componente
 interface DatabaseSidebarProps {
   onConnectionSelect?: (connectionId: string) => void;
-  onTableSelect?: (tableName: string, schemaName: string) => void;
+  onTableSelect?: (connectionId: string, tableName: string, schemaName: string) => void;
   onAddConnection?: () => void;
   onViewChange?: (view: 'welcome' | 'query' | 'table') => void; // Nueva prop
 
@@ -32,7 +32,7 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
   const [sidebarState, setSidebarState] = useState<'normal' | 'collapsed' | 'expanded'>('normal');
   // ========== ESTADOS DEL COMPONENTE ==========
   const [connections, setConnections] = useState<DatabaseConnection[]>([]);
-  const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
+  const [, setSelectedConnection] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Estados para controlar dropdowns
@@ -168,14 +168,22 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
   const loadSchemas = async (connectionId: string) => {
     try {
       setLoadingSchemas(prev => new Set(prev).add(connectionId));
-
+  
       const result = await apiService.getSchemas(connectionId);
-
+  
       if (result.success) {
+        console.log('Esquemas recibidos:', result.data);
+        const normalizedSchemas = result.data.map((schema: any) => ({
+          ...schema,
+          schema_name: schema.SCHEMA_NAME?.trim() || 'SYSDBA'
+        }));
+        
         setConnectionSchemas(prev => ({
           ...prev,
-          [connectionId]: result.data || []
+          [connectionId]: normalizedSchemas
         }));
+      } else {
+        console.error('Error al cargar esquemas:', result.error);
       }
     } catch (error) {
       console.error('Error al cargar esquemas:', error);
@@ -187,27 +195,36 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
       });
     }
   };
-
-  // Función para cargar tablas de un esquema específico
+  
+  // Modifica la función loadTables para normalizar los nombres
   const loadTables = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
     try {
+      const schemaKey = `${connectionId}-${schemaName}`;
       setLoadingTables(prev => new Set(prev).add(schemaKey));
-
-      const result = await apiService.getTables(connectionId, schemaName);
-
-      if (result.success) {
+      
+      const response = await apiService.getTables(connectionId, schemaName);
+      
+      if (response.success) {
+        console.log('Tablas recibidas para esquema', schemaName, ':', response.data);
+        const normalizedTables = response.data.map((table: any) => ({
+          ...table,
+          table_name: table.TABLE_NAME?.trim() || '',
+          schema_name: table.SCHEMA_NAME?.trim() || schemaName
+        }));
+        
         setSchemaTables(prev => ({
           ...prev,
-          [schemaKey]: result.data || []
+          [schemaKey]: normalizedTables
         }));
+      } else {
+        console.error('Error al cargar tablas:', response.error);
       }
     } catch (error) {
       console.error('Error al cargar tablas:', error);
     } finally {
       setLoadingTables(prev => {
         const newSet = new Set(prev);
-        newSet.delete(schemaKey);
+        newSet.delete(`${connectionId}-${schemaName}`);
         return newSet;
       });
     }
@@ -342,8 +359,8 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
           );
         }}
       >
-        {sidebarState === 'collapsed' ? '▶' :
-          sidebarState === 'expanded' ? '◀' : '◆'}
+        {sidebarState === 'collapsed' ? <span className="expand-right-icon"></span> :
+          sidebarState === 'expanded' ? <span className="expand-left-icon"></span> : <span className="expand-center-icon"></span>}
       </button>
       {/* Encabezado de la barra lateral */}
       <div className="sidebar-header">
@@ -354,13 +371,13 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
             onClick={loadConnections}
             disabled={loading}
           >
-            🔄
+            <span className="refresh-icon"></span>
           </button>
           <button
             className="refresh-btn"
             onClick={() => onAddConnection && onAddConnection()}
           >
-            ➕
+            <span className="add-icon"></span>
           </button>
         </div>
       </div>
@@ -383,11 +400,11 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
                 onClick={() => toggleConnection(connection.id)}
               >
                 <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}>
-                  {isExpanded ? '▼' : '▶'}
+                  {isExpanded ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
                 </span>
                 <span className="connection-name">{connection.name}</span>
                 <span className="connection-status">
-                  {connection.isActive ? '🟢' : '🔴'}
+                  {connection.isActive ? <span className="status-active-icon"></span> : <span className="status-inactive-icon"></span>}
                 </span>
               </div>
 
@@ -398,7 +415,7 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
                   {/* Detalles de la conexión */}
                   <div className="connection-details">
                     <div className="detail-item">
-                      <strong>Servidor:</strong> {connection.server}
+                      <strong>Host:</strong> {connection.host}
                     </div>
                     <div className="detail-item">
                       <strong>Base de datos:</strong> {connection.database}
@@ -468,13 +485,13 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
                       }}
                     >
                       <span className={`expand-icon ${showSchemasDropdown.has(connection.id) ? 'expanded' : ''}`}>
-                        {showSchemasDropdown.has(connection.id) ? '▼' : '▶'}
+                        {showSchemasDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
                       </span>
 
                       <span className="section-title">Esquemas</span>
                       <span className="schema-count">({schemas.length})</span>
 
-                      {isLoadingSchemas && <span className="loading-indicator">⏳</span>}
+                      {isLoadingSchemas && <span className="loading-indicator loading-icon"></span>}
                     </div>
 
                     {/* Dropdown de esquemas */}
@@ -486,12 +503,12 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
                           const isLoadingTables = loadingTables.has(schemaKey);
 
                           return (
-                            <div key={schema.schema_id} className="schema-item">
+                            <div key={`schema-${connection.id}-${schema.schema_name}`} className="schema-item">
 
                               {/* Header del esquema */}
                               <div className="schema-header">
                                 <span className="schema-name">{schema.schema_name}</span>
-                                <span className="schema-owner">({schema.principal_name})</span>
+                                <span className="schema-owner">(Esquema)</span>
                               </div>
 
                               {/* NUEVA SECCIÓN: Header clickeable para tablas */}
@@ -503,13 +520,13 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
                                 }}
                               >
                                 <span className={`expand-icon ${showTablesDropdown.has(schemaKey) ? 'expanded' : ''}`}>
-                                  {showTablesDropdown.has(schemaKey) ? '▼' : '▶'}
+                                  {showTablesDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
                                 </span>
 
                                 <span className="section-title">Tablas</span>
                                 <span className="schema-count">({tables.length})</span>
 
-                                {isLoadingTables && <span className="loading-indicator">⏳</span>}
+                                {isLoadingTables && <span className="loading-indicator loading-icon"></span>}
                               </div>
 
                               {/* DROPDOWN DE TABLAS - Solo se muestra si está expandido */}
@@ -518,19 +535,27 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
                                   <div className="tables-list">
                                     {tables.map((table) => (
                                       <div
-                                        key={table.table_name}
+                                        key={`table-${connection.id}-${schema.schema_name}-${table.table_name}`}
                                         className="table-item"
                                         onClick={(e) => {
                                           e.stopPropagation();
+                                          console.log('Table clicked:', table.table_name, 'in schema:', schema.schema_name);
                                           if (onTableSelect) {
-                                            onTableSelect(table.table_name, schema.schema_name);
+                                            console.log('Calling onTableSelect...');
+                                            onTableSelect(connection.id, table.table_name, schema.schema_name);
+                                            if (onViewChange) {
+                                              console.log('Calling onViewChange...');
+                                              onViewChange('table'); // Doble seguro para cambiar vista
+                                            }
+                                          } else {
+                                            console.log('onTableSelect is not defined');
                                           }
                                         }}
                                       >
-                                        <span className="table-icon">📋</span>
+                                        <span className="table-icon table-icon-img"></span>
                                         <span className="table-name">{table.table_name}</span>
                                         <span className="table-date">
-                                          {new Date(table.modify_date).toLocaleDateString()}
+                                          {table.description || 'Sin descripción'}
                                         </span>
                                       </div>
                                     ))}
@@ -581,8 +606,8 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
         );
       }}
     >
-      {sidebarState === 'collapsed' ? '▶' : 
-       sidebarState === 'expanded' ? '◀' : '◆'}
+      {sidebarState === 'collapsed' ? <span className="expand-right-icon"></span> : 
+       sidebarState === 'expanded' ? <span className="expand-left-icon"></span> : <span className="expand-center-icon"></span>}
     </button>
   </div>
     </div>

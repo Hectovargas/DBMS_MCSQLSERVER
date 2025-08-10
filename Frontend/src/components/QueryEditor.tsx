@@ -4,7 +4,7 @@ import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-sql';
 import 'prismjs/themes/prism-tomorrow.css';
 // Importamos React y los hooks necesarios para el componente
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 // Importamos el servicio para ejecutar consultas SQL
 import apiService from '../services/apiService';
 // Importamos el tipo TypeScript para los resultados de consultas
@@ -163,7 +163,7 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, onQueryExecuted
       {/* ========== ADVERTENCIA SI NO HAY CONEXIÓN ========== */}
       {!connectionId && (
         <div className="no-connection-warning">
-          <p>⚠️ Selecciona una conexión de base de datos para ejecutar consultas</p>
+          <p><span className="warning-icon"></span> Selecciona una conexión de base de datos para ejecutar consultas</p>
         </div>
       )}
 
@@ -254,7 +254,7 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, onQueryExecuted
       {/* ========== MENSAJE DE ERROR ========== */}
       {error && (
         <div className="error-message">
-          <p>❌ {error}</p>
+          <p><span className="error-icon"></span> {error}</p>
         </div>
       )}
     </div>

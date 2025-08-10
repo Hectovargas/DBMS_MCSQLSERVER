@@ -1,39 +1,39 @@
-const sql = require('mssql');
+const Firebird = require('node-firebird');
 const fs = require('fs').promises;
 const path = require('path');
-const crypto = require('crypto');
 const { v4: uuid } = require('uuid');
 
-type SqlServerConnection = {
+type FirebirdConnection = { //practicamente un "objeto" con las propiedades de la conexion, luego se guardan en el archivo 
     id?: string;
     name: string;
-    server: string;
+    host: string;
     database: string;
     username?: string;
     password?: string;
     port?: number;
     options?: {
-        encrypt?: boolean;
-        trustServerCertificate?: boolean;
-        enableArithAbort?: boolean;
-        connectionTimeout?: number;
-        requestTimeout?: number;
+        lowercase_keys?: boolean;
+        role?: string;
+        pageSize?: number;
+        retryConnectionInterval?: number;
+        blobAsText?: boolean;
+        encoding?: string;
     };
     isActive?: boolean;
     lastConnected?: Date;
     version?: string;
-    edition?: string;
+    dialect?: number;
 }
 
-type SqlServerConnectionResponse = {
+type FirebirdConnectionResponse = {// tambien un objeto pero con las prpiedades de la respuesta de la conexion
     success: boolean;
     message: string;
     connectionId?: string;
     serverInfo?: {
         version: string;
-        edition: string;
-        productLevel: string;
-        instanceName?: string;
+        dialect: number;
+        odsVersion: string;
+        engineVersion: string;
     };
     error?: {
         code?: number;
@@ -43,172 +43,73 @@ type SqlServerConnectionResponse = {
     };
 }
 
-interface connectionPool {
+interface connectionPool { //un objeto de la conexion activa a la abse de datos, cada cosa del sidebar es una de estos pools
     [connectionId: string]: {
         pool: any;
-        config: SqlServerConnection;
+        config: FirebirdConnection;
         lastUsed: Date;
         isConnected: boolean;
     }
 }
 
-class PasswordManager {
-    private static readonly ALGORITHM = 'aes-256-cbc';
-    private static readonly KEY_LENGTH = 32;
-    private static readonly IV_LENGTH = 16;
-    private static readonly TAG_LENGTH = 16;
-    private masterKey!: Buffer;
-    private keyFile: string;
-
-    constructor() {
-        this.keyFile = path.join(__dirname, '../data/.master.key');
-        this.initializeMasterKey();
-    }
-
-    private async initializeMasterKey(): Promise<void> {
-        try {
-            const keyData = await fs.readFile(this.keyFile);
-            this.masterKey = keyData;
-        } catch (error) {
-
-            this.masterKey = crypto.randomBytes(PasswordManager.KEY_LENGTH);
-            await this.ensureDataDirectory();
-            await fs.writeFile(this.keyFile, this.masterKey);
-            
-            if (process.platform !== 'win32') {
-                await fs.chmod(this.keyFile, 0o600);
-            }
-            
-            console.log('Nueva clave maestra generada y guardada');
-        }
-    }
-
-    private async ensureDataDirectory(): Promise<void> {
-        const dataDir = path.dirname(this.keyFile);
-        try {
-            await fs.access(dataDir);
-        } catch (error) {
-            await fs.mkdir(dataDir, { recursive: true });
-        }
-    }
-
-    encryptPassword(password: string): string {
-        if (!password) return '';
-        
-        const iv = crypto.randomBytes(PasswordManager.IV_LENGTH);
-        const cipher = crypto.createCipheriv(PasswordManager.ALGORITHM, this.masterKey, iv);
-        
-        let encrypted = cipher.update(password, 'utf8', 'hex');
-        encrypted += cipher.final('hex');
-        
-        return iv.toString('hex') + ':' + encrypted;
-    }
-
-    decryptPassword(encryptedPassword: string): string {
-        if (!encryptedPassword || encryptedPassword === '***') return '';
-        
-        try {
-            const parts = encryptedPassword.split(':');
-            if (parts.length !== 2) {
-                throw new Error('Formato de contraseña cifrada inválido');
-            }
-            
-            const iv = Buffer.from(parts[0] || '', 'hex');
-            const encrypted = parts[1];
-            
-            const decipher = crypto.createDecipheriv(PasswordManager.ALGORITHM, this.masterKey, iv);
-            
-            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-            decrypted += decipher.final('utf8');
-            
-            return decrypted;
-        } catch (error) {
-            console.error('Error al descifrar contraseña:', error);
-            return ''; 
-        }
-    }
-
-    async rotateMasterKey(): Promise<void> {
-        const oldKey = this.masterKey;
-        this.masterKey = crypto.randomBytes(PasswordManager.KEY_LENGTH);
-        
-        await fs.writeFile(this.keyFile, this.masterKey);
-        
-        if (process.platform !== 'win32') {
-            await fs.chmod(this.keyFile, 0o600);
-        }
-        
-        console.log('Clave maestra rotada exitosamente');
-    }
-}
-
 class databaseManager {
-    private connections: connectionPool = {};
-    private connectionsfile: string;
-    private passwordManager: PasswordManager;
+    // Arreglo de conexiones guardadas en el archivo
+    private conexiones: connectionPool = {};
+    // Ruta del archivo donde se guardan las conexiones
+    private archivoConexiones: string;
 
     constructor() {
-        this.connectionsfile = path.join(__dirname, '../data/connections.json');
-        this.passwordManager = new PasswordManager();
-        this.loadConnections();
+        this.archivoConexiones = path.join(__dirname, '../data/connections.json');
+        this.cargarConexiones();
     }
 
-    private async loadConnections(): Promise<void> {
+    private async cargarConexiones(): Promise<void> {
         try {
-            await this.ensureDataDirectory();
-            const data = await fs.readFile(this.connectionsfile, 'utf8');
-            const savedConnections = JSON.parse(data);
+            await this.asegurarDirectorioDatos();
+            const data = await fs.readFile(this.archivoConexiones, 'utf8');
+            const conexionesGuardadas = JSON.parse(data);
 
-            console.log(`Cargadas ${savedConnections.length} conexiones guardadas`);
-
-            for (const conn of savedConnections) {
-                if (conn.id) {
-                    const decryptedPassword = conn.password && conn.password !== '***' 
-                        ? this.passwordManager.decryptPassword(conn.password)
-                        : '';
-                    
-                    this.connections[conn.id] = {
+            for (const conexion of conexionesGuardadas) {
+                if (conexion.id) {
+                    const passwordPlano = typeof conexion.password === 'string' ? conexion.password : '';
+                    this.conexiones[conexion.id] = {
                         pool: null,
-                        config: { 
-                            ...conn, 
-                            password: decryptedPassword,
-                            isActive: false 
+                        config: {
+                            ...conexion,
+                            password: passwordPlano,
+                            isActive: false
                         },
-                        lastUsed: new Date(conn.lastUsed || conn.lastConnected),
+                        lastUsed: new Date(conexion.lastUsed || conexion.lastConnected),
                         isConnected: false
                     };
                 }
             }
         } catch (error) {
-            console.log('No se encontraron conexiones guardadas, comenzando con lista vacía');
+            console.log('No tienes conexiones xdddd.');
         }
     }
 
-    private async saveConnections(): Promise<void> {
-        try {
-            await this.ensureDataDirectory();
 
-            const connectionsToSave = Object.values(this.connections).map(conn => {
-                const configToSave = { ...conn.config };
-                
-                if (configToSave.password) {
-                    configToSave.password = this.passwordManager.encryptPassword(configToSave.password);
-                }
-                
+    private async guardarConexiones(): Promise<void> {
+        try {
+            await this.asegurarDirectorioDatos();
+
+            const conexionesParaGuardar = Object.values(this.conexiones).map(conexion => {
+                const configParaGuardar = { ...conexion.config };
                 return {
-                    ...configToSave,
-                    lastUsed: conn.lastUsed
+                    ...configParaGuardar,
+                    lastUsed: conexion.lastUsed
                 };
             });
-            
-            await fs.writeFile(this.connectionsfile, JSON.stringify(connectionsToSave, null, 2));
+
+            await fs.writeFile(this.archivoConexiones, JSON.stringify(conexionesParaGuardar, null, 2));
         } catch (error) {
             console.error("Error al guardar las conexiones: ", error);
         }
     }
 
-    private async ensureDataDirectory(): Promise<void> {
-        const dataDir = path.dirname(this.connectionsfile);
+    private async asegurarDirectorioDatos(): Promise<void> {
+        const dataDir = path.dirname(this.archivoConexiones);
         try {
             await fs.access(dataDir);
         } catch (error) {
@@ -216,38 +117,36 @@ class databaseManager {
         }
     }
 
-    async testConnection(config: SqlServerConnection): Promise<SqlServerConnectionResponse> {
+    // Crea la configuración de la conexion 
+    private crearConfiguracionFirebird(config: FirebirdConnection): any {
+        return {
+            host: config.host,
+            database: '/firebird/data/' + config.database,
+            port: config.port || 3050,
+            user: config.username || 'SYSDBA',
+            password: config.password || 'masterkey',
+            lowercase_keys: config.options?.lowercase_keys ?? false,
+            role: config.options?.role,
+            pageSize: config.options?.pageSize || 4096,
+            retryConnectionInterval: config.options?.retryConnectionInterval || 1000,
+            blobAsText: config.options?.blobAsText ?? false,
+            encoding: config.options?.encoding || 'UTF-8'
+        };
+    }
+
+
+    async testConnection(config: FirebirdConnection): Promise<FirebirdConnectionResponse> {
         try {
-            const sqlConfig: any = {
-                server: config.server,
-                database: config.database,
-                port: config.port || 1433,
-                options: {
-                    encrypt: config.options?.encrypt ?? true,
-                    trustServerCertificate: config.options?.trustServerCertificate ?? true,
-                    enableArithAbort: config.options?.enableArithAbort ?? true,
-                },
-                connectionTimeout: config.options?.connectionTimeout || 30000,
-                requestTimeout: config.options?.requestTimeout || 30000,
+            const connectionConfig = {
+                host: config.host,
+                database: '/firebird/data/' + config.database,
+                port: config.port || 3050,
+                user: config.username || 'SYSDBA',
+                password: config.password || 'masterkey'
             };
 
-            // Si se proporcionan credenciales, usarlas; si no, usar autenticación de Windows
-            if (config.username && config.password) {
-                sqlConfig.user = config.username;
-                sqlConfig.password = config.password;
-            } else {
-                // Autenticación de Windows
-                sqlConfig.integratedSecurity = true;
-            }
-            const pool = await sql.connect(sqlConfig)
-            const serverInfo = await this.getServerInfo(pool)
-            await pool.close();
-
-            return {
-                success: true,
-                message: 'conexion exitosa',
-                serverInfo
-            };
+            const result = await this.intentarConexion(connectionConfig);
+            return result;
 
         } catch (error: any) {
             return {
@@ -255,15 +154,56 @@ class databaseManager {
                 message: 'Error de conexión',
                 error: {
                     code: error.code,
-                    message: error.message,
-                    severity: error.class,
-                    state: error.state
+                    message: error.message
                 }
             };
         }
     }
 
-    async addConection(config: SqlServerConnection): Promise<SqlServerConnectionResponse> {
+    // Intenta abrir y cerrar una conexión para verificar parámetros
+    private async intentarConexion(firebirdConfig: any): Promise<FirebirdConnectionResponse> {
+        return new Promise((resolve, reject) => {
+
+            Firebird.attach(firebirdConfig, (err: any, db: any) => {
+                if (err) {
+                    console.error('Error al conectar:', err);
+                    reject(err);
+                    return;
+                }
+
+
+                db.query('SELECT 1 as test FROM RDB$DATABASE', (err: any, result: any) => {
+                    if (err) {
+                        db.detach();
+                        reject(err);
+                        return;
+                    }
+
+
+                    const serverInfo = {
+                        version: 'Firebird 3.0',
+                        dialect: 3,
+                        odsVersion: 'Unknown',
+                        engineVersion: 'Firebird 3.0'
+                    };
+
+                    try {
+                        db.detach();;
+                    } catch (detachError) {
+                        console.error('Error al cerrar conexion:', detachError);
+                    }
+
+                    resolve({
+                        success: true,
+                        message: 'Conexion exitosa',
+                        serverInfo
+                    });
+                });
+            });
+        });
+    }
+
+    async addConection(config: FirebirdConnection): Promise<FirebirdConnectionResponse> {
         try {
             const test = await this.testConnection(config);
             if (!test.success) {
@@ -278,17 +218,17 @@ class databaseManager {
                 lastConnected: new Date()
             };
 
-            this.connections[connectionId] = {
+            this.conexiones[connectionId] = {
                 pool: null,
                 config: newConfig,
                 lastUsed: new Date(),
                 isConnected: false
             };
 
-            await this.saveConnections();
+            await this.guardarConexiones();
             return {
                 success: true,
-                message: 'Conexión agregada exitosamente',
+                message: 'Conexion agregada exitosamente',
                 connectionId,
                 ...(test.serverInfo && { serverInfo: test.serverInfo })
             };
@@ -304,17 +244,21 @@ class databaseManager {
         }
     }
 
-    async connectToDatabase(connectionId: string): Promise<SqlServerConnectionResponse> {
+    async connectToDatabase(connectionId: string): Promise<FirebirdConnectionResponse> {
         try {
-            if (!this.connections[connectionId]) {
+
+            // en caso de que no exista
+            if (!this.conexiones[connectionId]) {
                 return {
                     success: false,
                     message: 'conexion no encontrada'
                 };
             }
 
-            const connection = this.connections[connectionId];
+            //se obtiene la referencia a la conexion 
+            const connection = this.conexiones[connectionId];
 
+            //si ya esta conectada no se necesita hacer nada mas
             if (connection.isConnected && connection.pool) {
                 return {
                     success: true,
@@ -322,51 +266,70 @@ class databaseManager {
                 };
             }
 
+            //se crea la configuracion de la conexion 
             const config = connection.config;
+            const firebirdConfig = this.crearConfiguracionFirebird(config); //se formatea a como el driver espera la conexion
 
-            const sqlConfig: any = {
-                server: config.server,
-                database: config.database,
-                port: config.port || 1433,
-                options: {
-                    encrypt: config.options?.encrypt ?? true,
-                    trustServerCertificate: config.options?.trustServerCertificate ?? true,
-                    enableArithAbort: config.options?.enableArithAbort ?? true,
-                },
-                connectionTimeout: config.options?.connectionTimeout || 30000,
-                requestTimeout: config.options?.requestTimeout || 30000,
-            };
+            //se crea el pool para la conexion 
+            const pool = Firebird.pool(5, firebirdConfig);
 
-            // Si se proporcionan credenciales, usarlas; si no, usar autenticación de Windows
-            if (config.username && config.password) {
-                sqlConfig.user = config.username;
-                sqlConfig.password = config.password;
-            } else {
-                // Autenticación de Windows
-                sqlConfig.integratedSecurity = true;
-            }
+            //se intenta obtener la conexion del pool
+            return new Promise((resolve, reject) => {
+                pool.get((err: any, db: any) => {
+                    if (err) {
+                        console.error('Error al obtener conexión del pool:', err);
+                        pool.destroy();
+                        resolve({
+                            success: false,
+                            message: 'Error al conectar',
+                            error: {
+                                code: err.code,
+                                message: err.message
+                            }
+                        });
+                        return;
+                    }
 
-            const pool = await sql.connect(sqlConfig);
-            const serverInfo = await this.getServerInfo(pool);
 
-            connection.pool = pool;
-            connection.isConnected = true;
-            connection.lastUsed = new Date();
-            connection.config.isActive = true;
-            connection.config.lastConnected = new Date();
-            connection.config.version = serverInfo.version;
-            connection.config.edition = serverInfo.edition;
+                    //cuando se acepta el pool se testea 
+                    db.query('SELECT 1 as test FROM RDB$DATABASE', (err: any, result: any) => {
+                        if (err) {
+                            db.detach();
+                            pool.destroy();
+                            resolve({
+                                success: false,
+                                message: 'Erro al obtener informacion del servidor',
+                                error: {
+                                    message: err.message
+                                }
+                            });
+                            return;
+                        }
 
-            await this.saveConnections();
 
-            return {
-                success: true,
-                message: 'Conectado exitosamente',
-                connectionId,
-                serverInfo
-            };
+                        db.detach();
+
+                        connection.pool = pool;
+                        connection.isConnected = true;
+                        connection.lastUsed = new Date();
+                        connection.config.isActive = true;
+                        connection.config.lastConnected = new Date();
+
+                        this.guardarConexiones();
+
+                        console.log('Conexión configurada exitosamente');
+
+                        resolve({
+                            success: true,
+                            message: 'Conectado exitosamente',
+                            connectionId
+                        });
+                    });
+                });
+            });
 
         } catch (error: any) {
+            console.error('Error en connectToDatabase:', error);
             return {
                 success: false,
                 message: 'Error al conectar',
@@ -378,32 +341,35 @@ class databaseManager {
         }
     }
 
-    async disconnectFromDatabase(connectionId: string): Promise<SqlServerConnectionResponse> {
+    async disconnectFromDatabase(connectionId: string): Promise<FirebirdConnectionResponse> {
+
+
         try {
-            if (!this.connections[connectionId]) {
+
+            if (!this.conexiones[connectionId]) {
                 return {
                     success: false,
                     message: 'Conexion no encontrada'
                 }
             }
-    
-            const connection = this.connections[connectionId];
-    
+
+            const connection = this.conexiones[connectionId];
+
             if (connection.pool && connection.isConnected) {
-                await connection.pool.close();
+                connection.pool.destroy();
             }
-    
+
             connection.pool = null;
             connection.isConnected = false;
             connection.config.isActive = false;
-    
-            await this.saveConnections();
-    
+
+            await this.guardarConexiones();
+
             return {
                 success: true,
                 message: 'Desonectado de la base de datos'
             };
-        } catch(error: any) {
+        } catch (error: any) {
             return {
                 success: false,
                 message: 'Error al desconectar',
@@ -414,12 +380,12 @@ class databaseManager {
         }
     }
 
-    async removeConnection(connectionId: string): Promise<SqlServerConnectionResponse> {
+    async removeConnection(connectionId: string): Promise<FirebirdConnectionResponse> {
         try {
-            if (this.connections[connectionId]) {
+            if (this.conexiones[connectionId]) {
                 await this.disconnectFromDatabase(connectionId);
-                delete this.connections[connectionId];
-                await this.saveConnections();
+                delete this.conexiones[connectionId];
+                await this.guardarConexiones();
 
                 return {
                     success: true,
@@ -434,7 +400,7 @@ class databaseManager {
         } catch (error: any) {
             return {
                 success: false,
-                message: 'Error al eliminar conexión',
+                message: 'Error al eliminar conexion',
                 error: {
                     message: error.message
                 }
@@ -442,170 +408,296 @@ class databaseManager {
         }
     }
 
-    getAllConnections(): SqlServerConnection[] {
-        return Object.values(this.connections).map(conn => ({
+    getAllConnections(): FirebirdConnection[] {
+        return Object.values(this.conexiones).map(conn => ({
             ...conn.config,
             password: conn.config.password ? '***' : undefined,
             lastConnected: conn.lastUsed
-        })) as SqlServerConnection[];
+        })) as FirebirdConnection[];
     }
 
-    getActiveConnections(): SqlServerConnection[] {
-        return Object.values(this.connections)
+    getActiveConnections(): FirebirdConnection[] {
+        return Object.values(this.conexiones)
             .filter(conn => conn.isConnected)
             .map(conn => ({
                 ...conn.config,
                 password: conn.config.password ? '***' : undefined,
                 lastConnected: conn.lastUsed
-            })) as SqlServerConnection[];
-    }
-
-    private async getServerInfo(pool: any) {
-        try {
-            const result = await pool.request().query(`
-                SELECT 
-                  SERVERPROPERTY('ProductVersion') as version,
-                  SERVERPROPERTY('Edition') as edition,
-                  SERVERPROPERTY('ProductLevel') as productLevel,
-                  SERVERPROPERTY('InstanceName') as instanceName
-              `);
-
-            return result.recordset[0];
-        } catch (error) {
-            return {
-                version: 'Unknown',
-                edition: 'Unknown',
-                productLevel: 'Unknown',
-                instanceName: null
-            };
-        }
+            })) as FirebirdConnection[];
     }
 
     async executeQuery(connectionId: string, query: string, parametrers?: any): Promise<any> {
         try {
-            if (!this.connections[connectionId]) {
+            if (!this.conexiones[connectionId]) {
                 throw new Error('conexion no encontrada');
             }
 
-            const connection = this.connections[connectionId];
+            const connection = this.conexiones[connectionId];
 
             if (!connection.isConnected || !connection.pool) {
                 throw new Error('La conexion no esta activa');
             }
 
             connection.lastUsed = new Date();
-            const request = connection.pool.request();
 
-            if (parametrers) {
-                Object.keys(parametrers).forEach(key => {
-                    request.input(key, parametrers[key]);
+            return new Promise((resolve, reject) => {
+                connection.pool.get((err: any, db: any) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            error: err.message
+                        });
+                        return;
+                    }
+
+
+                    const startTime = Date.now(); //con esto marco el inicio de la consulrta
+
+                    db.query(query, parametrers || [], (err: any, result: any) => {
+                        const executionTime = Date.now() - startTime;
+
+                        if (err) {
+                            db.detach();
+                            resolve({
+                                success: false,
+                                error: err.message
+                            });
+                            return;
+                        }
+
+                        let columns: { name: string; type: string }[] = [];
+                        if (result && result.length > 0) {
+                            columns = Object.keys(result[0]).map(key => ({
+                                name: key,
+                                type: typeof result[0][key]
+                            }));
+                        }
+
+                        db.detach();
+
+                        connection.isConnected = true;
+                        connection.config.isActive = true;
+                        connection.lastUsed = new Date();
+
+                        resolve({
+                            success: true,
+                            data: result,
+                            rowsAffected: result ? result.length : 0,
+                            executionTime,
+                            columns: columns
+                        });
+                    });
                 });
-            }
-
-            const startTime = Date.now();
-            const result = await request.query(query);
-            const executionTime = Date.now() - startTime;
-
-            let columns: { name: string; type: string }[] = [];
-            if (result.recordset && result.recordset.length > 0) {
-                columns = Object.keys(result.recordset[0]).map(key => ({
-                    name: key,
-                    type: typeof result.recordset[0][key]
-                }));
-            }
-
-            return {
-                success: true,
-                data: result.recordset,
-                rowsAffected: result.rowsAffected[0] || 0,
-                executionTime,
-                columns: columns
-            };
+            });
 
         } catch (error: any) {
-            const sqlErrorMsg = error.originalError?.info?.message || error.message;
             return {
                 success: false,
-                error: sqlErrorMsg 
+                error: error.message
             };
         }
     }
 
     async getSchemas(connectionId: string): Promise<any> {
-        const queryto = `
+        const query = `
+          SELECT DISTINCT 
+            TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) as SCHEMA_NAME
+          FROM RDB$RELATIONS 
+          WHERE RDB$VIEW_BLR IS NULL 
+            AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+          ORDER BY RDB$OWNER_NAME
+        `;
+
+        const result = await this.executeQuery(connectionId, query);
+
+        if (result.success && this.conexiones[connectionId]) {
+            this.conexiones[connectionId].isConnected = true;
+            this.conexiones[connectionId].config.isActive = true;
+            this.conexiones[connectionId].lastUsed = new Date();
+        }
+
+        return result;
+    }
+
+    async getTables(connectionId: string, schemaName: string = ''): Promise<any> {
+        let query = `
+          SELECT 
+            TRIM(RDB$RELATION_NAME) as TABLE_NAME,
+            TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) as SCHEMA_NAME,
+            RDB$DESCRIPTION as DESCRIPTION
+          FROM RDB$RELATIONS 
+          WHERE RDB$VIEW_BLR IS NULL 
+            AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+        `;
+
+        if (schemaName) {
+            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
+        }
+
+        query += ` ORDER BY RDB$RELATION_NAME`;
+
+        const result = await this.executeQuery(connectionId, query);
+
+        if (result.success && this.conexiones[connectionId]) {
+            this.conexiones[connectionId].isConnected = true;
+            this.conexiones[connectionId].config.isActive = true;
+            this.conexiones[connectionId].lastUsed = new Date();
+        }
+
+        return result;
+    }
+
+    async getTablesColumns(
+        connectionId: string,
+        tableName: string,
+        schemaName: string = ''
+    ): Promise<any> {
+
+        /*
+    System Tables usadas en Firebird para obtener metadata de columnas:
+
+    1. RDB$RELATION_FIELDS ( RF)
+       - Contiene la lista de campos que pertenecen a cada tabla o vista.
+       - Campos clave:
+            RDB$RELATION_NAME → Nombre de la tabla/vista.
+            RDB$FIELD_NAME    → Nombre de la columna.
+            RDB$FIELD_SOURCE  → Nombre del dominio o definición interna del tipo de dato.
+            RDB$FIELD_POSITION→ Posición de la columna (orden).
+            RDB$NULL_FLAG     → Si es 1 = NOT NULL, si es NULL = permite nulos.
+            RDB$DEFAULT_SOURCE→ Valor por defecto en SQL.
+            RDB$DESCRIPTION   → Comentario/nota asociada a la columna.
+
+    2. RDB$FIELDS (alias F)
+       - Define los dominios internos o tipos de datos reales.
+       - Campos clave:
+            RDB$FIELD_NAME     → Nombre interno del dominio/tipo.
+            RDB$FIELD_TYPE     → Código numérico del tipo (ej. 37 = VARCHAR).
+            RDB$FIELD_SUB_TYPE → Subtipo (para BLOBs, NUMERIC, etc.).
+            RDB$FIELD_LENGTH   → Longitud en bytes.
+            RDB$FIELD_PRECISION→ Precisión para tipos numéricos.
+            RDB$FIELD_SCALE    → Escala (decimales) para numéricos.
+            RDB$COMPUTED_SOURCE→ Expresión SQL si es un campo calculado.
+
+    3. RDB$RELATIONS (alias R)
+       - Lista todas las tablas, vistas y sus metadatos.
+       - Campos clave:
+            RDB$RELATION_NAME → Nombre de la tabla/vista.
+            RDB$OWNER_NAME    → Usuario/rol dueño de la tabla.
+
+    4. RDB$RELATION_CONSTRAINTS (alias RC)
+       - Lista de restricciones a nivel de tabla (PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK).
+       - Campos clave:
+            RDB$RELATION_NAME → Tabla a la que pertenece la restricción.
+            RDB$INDEX_NAME    → Índice asociado a la restricción.
+            RDB$CONSTRAINT_TYPE → Tipo de restricción ('PRIMARY KEY', 'FOREIGN KEY', etc.).
+
+    5. RDB$INDEX_SEGMENTS (alias S)
+       - Lista de columnas que componen cada índice.
+       - Campos clave:
+            RDB$INDEX_NAME → Índice al que pertenece la columna.
+            RDB$FIELD_NAME → Nombre de la columna dentro del índice.
+
+    Resumen de uso en la función:
+        - RDB$RELATION_FIELDS → Punto de partida, lista las columnas de la tabla.
+        - RDB$FIELDS → Obtenemos el tipo real, longitud, precisión y escala.
+        - RDB$RELATIONS → Usado para filtrar por tabla y esquema (owner).
+        - RDB$RELATION_CONSTRAINTS + RDB$INDEX_SEGMENTS → Determinar si la columna es Primary Key o Foreign Key.
+*/
+
+    
+        const query = `
             SELECT 
-                s.name as schema_name, 
-                s.schema_id, 
-                ISNULL(p.name, 'dbo') as principal_name
-            FROM sys.schemas s 
-            LEFT JOIN sys.database_principals p ON s.principal_id = p.principal_id
-            WHERE s.schema_id < 16384  -- Excluir esquemas del sistema por ID
-                AND s.name NOT IN ('sys', 'INFORMATION_SCHEMA', 'guest')
-            ORDER BY s.name;
+                TRIM(RF.RDB$FIELD_NAME) AS "name",
+                F.RDB$FIELD_TYPE AS "dataType",
+                TRIM(F.RDB$FIELD_SUB_TYPE) AS "subType",
+                F.RDB$FIELD_LENGTH AS "maxLength",
+                F.RDB$FIELD_PRECISION AS "precision",
+                F.RDB$FIELD_SCALE AS "scale",
+                CASE WHEN RF.RDB$NULL_FLAG = 1 THEN 0 ELSE 1 END AS "isNullable",
+                TRIM(RF.RDB$DEFAULT_SOURCE) AS "defaultValue",
+                TRIM(RF.RDB$DESCRIPTION) AS "description",
+                CASE WHEN CPK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isPrimaryKey",
+                CASE WHEN CFK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isForeignKey"
+            FROM RDB$RELATION_FIELDS RF
+            INNER JOIN RDB$RELATIONS R 
+                ON RF.RDB$RELATION_NAME = R.RDB$RELATION_NAME
+            INNER JOIN RDB$FIELDS F 
+                ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME
+            -- Primary Keys
+            LEFT JOIN (
+                SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME
+                FROM RDB$RELATION_CONSTRAINTS RC
+                INNER JOIN RDB$INDEX_SEGMENTS S 
+                    ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME
+                WHERE RC.RDB$CONSTRAINT_TYPE = 'PRIMARY KEY'
+            ) CPK ON CPK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME
+                AND CPK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME
+            -- Foreign Keys
+            LEFT JOIN (
+                SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME
+                FROM RDB$RELATION_CONSTRAINTS RC
+                INNER JOIN RDB$INDEX_SEGMENTS S 
+                    ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME
+                WHERE RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'
+            ) CFK ON CFK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME
+                AND CFK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME
+            WHERE RF.RDB$RELATION_NAME = UPPER(?)
+            ${schemaName && schemaName.trim() !== '' ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
+            ORDER BY RF.RDB$FIELD_POSITION
         `;
     
-        return await this.executeQuery(connectionId, queryto);
-    }
-
-    async getTables(connectionId: string, schemaName: String = 'dbo'): Promise<any> {
-        const queryto = `SELECT 
-        t.name as table_name,
-        s.name as schema_name,
-        t.create_date,
-        t.modify_date
-        FROM sys.tables t INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
-        WHERE s.name = @schemaName AND t.is_ms_shipped = 0
-        ORDER BY t.name;
-        `;
-        return await this.executeQuery(connectionId, queryto, { schemaName });
-    }
-
-    async getTablesColumns(connectionId: string, tableName: string, schemaName: string = 'dbo'): Promise<any> {
-        const queryto = `
-          SELECT 
-    c.name as name,
-    t.name as dataType,
-    c.max_length as maxLength,
-    c.precision,
-    c.scale,
-    c.is_nullable as isNullable,
-    c.is_identity as isIdentity,
-    ISNULL(dc.definition, '') as defaultValue,
-    CASE WHEN pk.column_id IS NOT NULL THEN 1 ELSE 0 END as isPrimaryKey,
-    CASE WHEN fk.parent_column_id IS NOT NULL THEN 1 ELSE 0 END as isForeignKey,
-    '' as description
-        FROM sys.columns c
-        JOIN sys.types t ON c.user_type_id = t.user_type_id
-        JOIN sys.tables tb ON c.object_id = tb.object_id
-        JOIN sys.schemas s ON tb.schema_id = s.schema_id
-        LEFT JOIN sys.default_constraints dc ON c.default_object_id = dc.object_id
-        LEFT JOIN sys.index_columns pk ON c.column_id = pk.column_id AND c.object_id = pk.object_id
-        AND EXISTS (SELECT 1 FROM sys.indexes i 
-                WHERE i.object_id = pk.object_id AND i.index_id = pk.index_id 
-                AND i.is_primary_key = 1)
-        LEFT JOIN sys.foreign_key_columns fk ON c.column_id = fk.parent_column_id AND c.object_id = fk.parent_object_id
-        WHERE tb.name = @tableName AND s.name = @schemaName
-        ORDER BY c.column_id;
-        `;
-        return await this.executeQuery(connectionId, queryto, { tableName, schemaName });
+        const params = schemaName && schemaName.trim() !== '' 
+            ? [tableName, schemaName]
+            : [tableName];
+    
+    
+        const result = await this.executeQuery(connectionId, query, params);
+    
+        if (result.success && this.conexiones[connectionId]) {
+            this.conexiones[connectionId].isConnected = true;
+            this.conexiones[connectionId].config.isActive = true;
+            this.conexiones[connectionId].lastUsed = new Date();
+        }
+    
+        return result;
     }
 
     private generateConnectionId(): string {
         return `connection_${uuid()}`;
     }
 
-    async closeAllconection(): Promise<void>{
-        const conectionsIDs = Object.keys(this.connections);
-        for (const connectionId of conectionsIDs){
+    async closeAllconection(): Promise<void> {
+        const idsConexiones = Object.keys(this.conexiones);
+        for (const connectionId of idsConexiones) {
             await this.disconnectFromDatabase(connectionId);
         }
     }
 
     async checkConnectionsHealth(): Promise<void> {
-        for (const [id, connection] of Object.entries(this.connections)) {
+        // Comentado temporalmente para evitar errores 
+        console.log('Verificación de salud de conexiones deshabilitada temporalmente');
+        return;
+
+        /*
+        for (const [id, connection] of Object.entries(this.conexiones)) {
           if (connection.isConnected && connection.pool) {
             try {
-              await connection.pool.request().query('SELECT 1');
+              await new Promise((resolve, reject) => {
+                connection.pool.get((err: any, db: any) => {
+                  if (err) {
+                    reject(err);
+                    return;
+                  }
+                  db.query('SELECT 1 FROM RDB$DATABASE', (err: any) => {
+                    db.detach();
+                    if (err) {
+                      reject(err);
+                    } else {
+                      resolve(true);
+                    }
+                  });
+                });
+              });
               connection.lastUsed = new Date();
             } catch (error) {
               console.log(`Conexión ${id} perdida, marcando como desconectada`);
@@ -615,69 +707,11 @@ class databaseManager {
             }
           }
         }
-        await this.saveConnections();
+        await this.guardarConexiones();
+        */
     }
 
-    async rotateEncryptionKey(): Promise<SqlServerConnectionResponse> {
-        try {
-            const tempPasswords: { [key: string]: string } = {};
-            
-            Object.entries(this.connections).forEach(([id, connection]) => {
-                if (connection.config.password) {
-                    tempPasswords[id] = connection.config.password;
-                }
-            });
-
-            await this.passwordManager.rotateMasterKey();
-
-            Object.entries(this.connections).forEach(([id, connection]) => {
-                if (tempPasswords[id]) {
-                    connection.config.password = tempPasswords[id];
-                }
-            });
-
-            await this.saveConnections();
-
-            return {
-                success: true,
-                message: 'Clave de cifrado rotada exitosamente'
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al rotar la clave de cifrado',
-                error: {
-                    message: error.message
-                }
-            };
-        }
-    }
-
-    async verifyPasswordIntegrity(): Promise<{ valid: number; invalid: number; details: string[] }> {
-        let valid = 0;
-        let invalid = 0;
-        const details: string[] = [];
-
-        Object.entries(this.connections).forEach(([id, connection]) => {
-            if (connection.config.password) {
-                try {
-   
-                    const decrypted = this.passwordManager.decryptPassword(connection.config.password);
-                    if (decrypted) {
-                        valid++;
-                    } else {
-                        invalid++;
-                        details.push(`Conexión ${connection.config.name} (${id}): contraseña no se pudo descifrar`);
-                    }
-                } catch (error) {
-                    invalid++; 
-                    details.push(`Conexión ${connection.config.name} (${id}): error al descifrar - ${error}`);
-                }
-            }
-        });
-
-        return { valid, invalid, details };
-    }
+    // Eliminadas utilidades de cifrado y verificación de contraseñas por simplificación solicitada
 }
 
 module.exports = new databaseManager();

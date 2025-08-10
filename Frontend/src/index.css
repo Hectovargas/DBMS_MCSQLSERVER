@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -27,6 +31,9 @@
   --disabled-color: #6c757d;
   --disabled-bg: #e9ecef;
   --disabled-text: #6c757d;
+  
+  /* Variables para iconos */
+  --icon-filter: none;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -59,6 +66,9 @@
   --disabled-color: #6c757d;
   --disabled-bg: #2d2d2d;
   --disabled-text: #6c757d;
+  
+  /* Variables para iconos en tema oscuro */
+  --icon-filter: invert(1) brightness(0.8);
 }
 
 * {

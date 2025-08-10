@@ -1,16 +1,17 @@
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: sqlserver-db
+  firebird:
+    image: jacobalberty/firebird:2.5-sc
+    container_name: firebird-db
     environment:
-      ACCEPT_EULA: Y
-      SA_PASSWORD: YourStrong@Password123
-      MSSQL_PID: Express
+      FIREBIRD_DATABASE: testdb.fdb
+      FIREBIRD_USER: SYSDBA
+      FIREBIRD_PASSWORD: masterkey
+      ISC_PASSWORD: masterkey
     ports:
-      - "1433:1433"
+      - "3050:3050"
     volumes:
-      - sqlserver_data:/var/opt/mssql
+      - firebird_data:/firebird/data
     restart: unless-stopped
 
 volumes:
-  sqlserver_data:
+  firebird_data:

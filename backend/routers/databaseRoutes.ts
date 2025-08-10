@@ -17,6 +17,7 @@ router.post('/:connectionId/disconnect', DatabaseController.disconnectFromDataba
 
 router.post('/:connectionId/query', DatabaseController.executeQuery);
 router.get('/:connectionId/schemas', DatabaseController.getSchemas);
+router.get('/:connectionId/schemas/tables', DatabaseController.getTables);
 router.get('/:connectionId/schemas/:schemaName/tables', DatabaseController.getTables);
 router.get('/:connectionId/tables/:tableName/columns', DatabaseController.getTableColumns);
 

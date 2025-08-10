@@ -29,7 +29,7 @@ const NavigationTabs: React.FC<NavigationTabsProps> = ({
         className={`nav-tab ${activeView === 'welcome' ? 'active' : ''}`} // Clase activa si es la vista actual
         onClick={() => onViewChange('welcome')} // Cambia a la vista de bienvenida
       >
-        🏠 Inicio
+        <span className="nav-icon home-icon"></span> Inicio
       </button>
       
       {/* ========== PESTAÑA: EDITOR DE CONSULTAS ========== */}
@@ -38,7 +38,16 @@ const NavigationTabs: React.FC<NavigationTabsProps> = ({
         onClick={() => onViewChange('query')} // Cambia a la vista del editor de consultas
         disabled={!hasConnection} // Deshabilitado si no hay conexión activa
       >
-        🔍 Editor de Consultas
+        <span className="nav-icon query-icon"></span> Editor de Consultas
+      </button>
+
+      {/* ========== PESTAÑA: DETALLES DE TABLA ========== */}
+      <button
+        className={`nav-tab ${activeView === 'table' ? 'active' : ''}`} // Clase activa si es la vista actual
+        onClick={() => onViewChange('table')} // Cambia a la vista de detalles de tabla
+        disabled={!hasTable} // Deshabilitado si no hay tabla seleccionada
+      >
+        <span className="nav-icon table-details-icon"></span> Detalles de Tabla
       </button>
     </div>
   );

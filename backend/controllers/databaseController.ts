@@ -20,10 +20,10 @@ class databaseController {
     try {
       const connectionConfig = req.body;
       
-      if (!connectionConfig.server || !connectionConfig.database) {
+      if (!connectionConfig.host || !connectionConfig.database) {
         res.status(400).json({
           success: false,
-          message: 'Server y database son campos requeridos'
+          message: 'Host y database son campos requeridos'
         });
         return;
       }
@@ -48,10 +48,10 @@ class databaseController {
     try {
       const connectionConfig = req.body;
       
-      if (!connectionConfig.name || !connectionConfig.server || !connectionConfig.database) {
+      if (!connectionConfig.name || !connectionConfig.host || !connectionConfig.database) {
         res.status(400).json({
           success: false,
-          message: 'Name, server y database son campos requeridos'
+          message: 'Name, host y database son campos requeridos'
         });
         return;
       }
@@ -217,10 +217,10 @@ class databaseController {
         res.status(400).json(result);
       }
     } catch (error: any) {
-      const sqlErrorMsg = error.originalError?.info?.message || error.message;
+      const firebirdErrorMsg = error.message;
       res.status(500).json({
           success: false,
-          error: sqlErrorMsg 
+          error: firebirdErrorMsg 
       });
   }
   
@@ -256,7 +256,7 @@ class databaseController {
 
   async getTables(req: any, res: any): Promise<void> {
     try {
-      const { connectionId, schemaName = 'dbo' } = req.params;
+      const { connectionId, schemaName = '' } = req.params;
       
       if (!connectionId) {
         res.status(400).json({
@@ -285,7 +285,9 @@ class databaseController {
   async getTableColumns(req: any, res: any): Promise<void> {
     try {
       const { connectionId, tableName } = req.params;
-      const { schemaName = 'dbo' } = req.query;
+      const { schemaName = '' } = req.query;
+      
+      console.log('getTableColumns called with:', { connectionId, tableName, schemaName });
       
       if (!connectionId || !tableName) {
         res.status(400).json({
@@ -297,12 +299,15 @@ class databaseController {
 
       const result = await databaseManager.getTablesColumns(connectionId, tableName, schemaName);
       
+      console.log('getTableColumns result:', result);
+      
       if (result.success) {
         res.status(200).json(result);
       } else {
         res.status(400).json(result);
       }
     } catch (error: any) {
+      console.error('getTableColumns error:', error);
       res.status(500).json({
         success: false,
         message: 'Error al obtener columnas de la tabla',

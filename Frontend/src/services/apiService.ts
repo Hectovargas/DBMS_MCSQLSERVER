@@ -2,37 +2,35 @@ const API_BASE = 'http://localhost:3001/api/database';
 
 export interface ConnectionConfig {
   name: string;
-  server: string;
+  host: string;
   database: string;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
   port: number;
 }
 
 export interface DatabaseConnection {
   id: string;
   name: string;
-  server: string;
+  host: string;
   database: string;
   username?: string;
   port?: number;
   isActive?: boolean;
   lastConnected?: Date;
   version?: string;
-  edition?: string;
+  dialect?: number;
 }
 
 export interface Schema {
   schema_name: string;
-  schema_id: number;
-  principal_name: string;
+  table_name: string;
 }
 
 export interface Table {
   table_name: string;
   schema_name: string;
-  create_date: string;
-  modify_date: string;
+  description?: string;
 }
 
 export interface Column {
@@ -227,11 +225,18 @@ class ApiService {
   }
 
   // Obtener tablas
-  async getTables(connectionId: string, schemaName: string): Promise<any> {
+  async getTables(connectionId: string, schemaName: string = ''): Promise<any> {
     try {
       console.log('Obteniendo tablas:', { connectionId, schemaName });
       
-      const response = await fetch(`${API_BASE}/${connectionId}/schemas/${schemaName}/tables`);
+      let url = `${API_BASE}/${connectionId}/schemas`;
+      if (schemaName && schemaName !== 'DEFAULT') {
+        url += `/${schemaName}/tables`;
+      } else {
+        url += '/tables';
+      }
+      
+      const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
       console.error('Error en getTables:', error);
@@ -240,12 +245,19 @@ class ApiService {
   }
 
   // Obtener columnas de tabla
-  async getTableColumns(connectionId: string, tableName: string, schemaName: string = 'dbo'): Promise<any> {
+  async getTableColumns(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
     try {
       console.log('Obteniendo columnas de tabla:', { connectionId, tableName, schemaName });
       
-      const response = await fetch(`${API_BASE}/${connectionId}/tables/${tableName}/columns?schemaName=${encodeURIComponent(schemaName)}`);
-      return await this.handleResponse(response);
+      // Si el esquema es DEFAULT, no lo incluimos en la URL
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/tables/${tableName}/columns?schemaName=${encodeURIComponent(schemaParam)}`;
+      console.log('API URL:', url);
+      
+      const response = await fetch(url);
+      const result = await this.handleResponse(response);
+      console.log('API result:', result);
+      return result;
     } catch (error) {
       console.error('Error en getTableColumns:', error);
       throw error;

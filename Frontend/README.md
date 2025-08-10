@@ -1,163 +1,165 @@
-# Gestor de Base de Datos SQL Server - Frontend
+# Gestor de Base de Datos Firebird - Frontend
 
-Una aplicación web moderna para gestionar y consultar bases de datos SQL Server con una interfaz intuitiva y funcional.
+Una aplicación web moderna para gestionar y consultar bases de datos Firebird con una interfaz intuitiva y funcional.
 
-## 🚀 Características
+## Características
 
-### 🔌 Gestión de Conexiones
-- **Prueba de conexiones**: Verifica la conectividad antes de agregar una conexión
-- **Múltiples conexiones**: Gestiona múltiples conexiones a diferentes servidores
-- **Estado de conexión**: Visualiza el estado activo/inactivo de cada conexión
-- **Desconexión**: Cierra conexiones de forma segura
+- **Conexión a Firebird**: Conecta fácilmente a bases de datos Firebird
+- **Editor de Consultas**: Ejecuta consultas SQL con sintaxis highlighting
+- **Explorador de Esquemas**: Navega por esquemas, tablas y columnas
+- **Gestión de Conexiones**: Guarda y gestiona múltiples conexiones
+- **Interfaz Moderna**: Diseño responsive y intuitivo
+- **Tema Oscuro/Claro**: Soporte para múltiples temas
 
-### 🔍 Editor de Consultas SQL
-- **Editor de texto**: Interfaz intuitiva para escribir consultas SQL
-- **Ejecución rápida**: Usa Ctrl+Enter para ejecutar consultas
-- **Resultados tabulares**: Visualiza resultados en formato de tabla
-- **Información de ejecución**: Tiempo de ejecución y filas afectadas
-- **Manejo de errores**: Mensajes de error detallados con códigos y líneas
+## Tecnologías Utilizadas
 
-### 📊 Explorador de Base de Datos
-- **Navegación jerárquica**: Servidores → Esquemas → Tablas
-- **Información detallada**: Muestra metadatos de tablas y columnas
-- **Propiedades de columnas**: Tipo de datos, nulabilidad, claves, etc.
-- **Scripts generados**: Genera automáticamente consultas SELECT y CREATE TABLE
+- **React 18** con TypeScript
+- **Vite** para el bundling y desarrollo
+- **CSS Modules** para estilos modulares
+- **Context API** para gestión de estado
+- **Fetch API** para comunicación con el backend
 
-### 🏗️ Detalles de Tablas
-- **Vista de columnas**: Información completa de la estructura de la tabla
-- **Generación de consultas**: Scripts SQL sugeridos para consultar datos
-- **Estructura de tabla**: Script CREATE TABLE para recrear la tabla
-- **Resumen estadístico**: Conteo de columnas, claves primarias, etc.
+## Instalación
 
-### 🎨 Interfaz Moderna
-- **Tema adaptable**: Soporte para modo claro y oscuro
-- **Navegación por pestañas**: Cambio fácil entre diferentes vistas
-- **Diseño responsivo**: Funciona en dispositivos móviles y de escritorio
-- **Indicadores de estado**: Estado del servidor backend en tiempo real
+1. **Clona el repositorio**:
+   ```bash
+   git clone <url-del-repositorio>
+   cd Frontend
+   ```
 
-## 🛠️ Tecnologías Utilizadas
+2. **Instala las dependencias**:
+   ```bash
+   npm install
+   ```
 
-- **React 18**: Framework de interfaz de usuario
-- **TypeScript**: Tipado estático para mayor robustez
-- **CSS Variables**: Sistema de temas personalizable
-- **Fetch API**: Comunicación con el backend
-- **Vite**: Herramienta de construcción rápida
+3. **Inicia el servidor de desarrollo**:
+   ```bash
+   npm run dev
+   ```
 
-## 📁 Estructura del Proyecto
+4. **Abre tu navegador** en `http://localhost:5173`
+
+## Scripts Disponibles
+
+- `npm run dev` - Inicia el servidor de desarrollo
+- `npm run build` - Construye la aplicación para producción
+- `npm run preview` - Previsualiza la build de producción
+- `npm run lint` - Ejecuta el linter
+
+## Configuración de Conexión
+
+Para conectarte a una base de datos Firebird:
+
+1. **Host**: Dirección del servidor Firebird (ej: localhost)
+2. **Base de Datos**: Ruta completa al archivo .fdb (ej: /path/to/database.fdb)
+3. **Usuario**: Usuario de Firebird (por defecto: SYSDBA)
+4. **Contraseña**: Contraseña del usuario (por defecto: masterkey)
+5. **Puerto**: Puerto de Firebird (por defecto: 3050)
+
+## Estructura del Proyecto
 
 ```
-src/
-├── components/
-│   ├── ConnectionForm.tsx      # Formulario de conexión
-│   ├── DatabaseSidebar.tsx     # Explorador de base de datos
-│   ├── QueryEditor.tsx         # Editor de consultas SQL
-│   ├── TableDetails.tsx        # Detalles de tablas
-│   ├── NavigationTabs.tsx      # Navegación entre vistas
-│   ├── ServerStatus.tsx        # Estado del servidor
-│   └── *.css                   # Estilos de componentes
-├── services/
-│   └── apiService.ts           # Servicio de comunicación con API
-├── contexts/
-│   └── ThemeContext.tsx        # Contexto de tema
-└── App.tsx                     # Componente principal
+Frontend/
+├── src/
+│   ├── components/          # Componentes React
+│   │   ├── ConnectionForm.tsx
+│   │   ├── DatabaseSidebar.tsx
+│   │   ├── NavigationTabs.tsx
+│   │   ├── QueryEditor.tsx
+│   │   └── TableDetails.tsx
+│   ├── contexts/           # Contextos de React
+│   │   └── ThemeContext.tsx
+│   ├── services/           # Servicios de API
+│   │   └── apiService.ts
+│   ├── App.tsx            # Componente principal
+│   └── main.tsx           # Punto de entrada
+├── public/                # Archivos estáticos
+└── package.json           # Dependencias y scripts
 ```
 
-## 🚀 Instalación y Uso
+## Componentes Principales
 
-### Prerrequisitos
-- Node.js 16+ 
-- Backend del gestor de base de datos ejecutándose en puerto 3001
+### ConnectionForm
+Formulario para crear y probar conexiones a bases de datos Firebird.
 
-### Instalación
-```bash
-cd Frontend
-npm install
-```
+### DatabaseSidebar
+Explorador de conexiones, esquemas y tablas con navegación jerárquica.
 
-### Desarrollo
-```bash
-npm run dev
-```
+### QueryEditor
+Editor de consultas SQL con resaltado de sintaxis y ejecución de queries.
 
-### Construcción
-```bash
-npm run build
-```
+### TableDetails
+Visualización detallada de la estructura de tablas y sus columnas.
 
-## 🔧 Configuración
+## API Integration
 
-### Variables de Entorno
-El frontend se conecta por defecto al backend en `http://localhost:3001`. Para cambiar esto, modifica la constante `API_BASE` en `src/services/apiService.ts`.
+El frontend se comunica con el backend a través de la API REST:
 
-### Temas
-El sistema de temas utiliza CSS variables que se pueden personalizar en `src/index.css`.
+- `POST /api/database/test` - Probar conexión
+- `POST /api/database/add` - Agregar conexión
+- `GET /api/database/all` - Obtener todas las conexiones
+- `POST /api/database/:id/connect` - Conectar a base de datos
+- `POST /api/database/:id/query` - Ejecutar consulta SQL
 
-## 📖 Guía de Uso
+## Temas
 
-### 1. Crear una Conexión
-1. Haz clic en "+ Nueva Conexión" en el header
-2. Completa los campos requeridos (servidor, base de datos, credenciales)
-3. Usa "Probar Conexión" para verificar la conectividad
-4. Haz clic en "Agregar Conexión" para guardar
+La aplicación soporta múltiples temas:
 
-### 2. Ejecutar Consultas
-1. Selecciona una conexión del sidebar
-2. Navega a "Editor de Consultas"
-3. Escribe tu consulta SQL
-4. Presiona Ctrl+Enter o haz clic en "Ejecutar"
+- **Claro**: Tema por defecto con colores claros
+- **Oscuro**: Tema oscuro para mejor experiencia visual
 
-### 3. Explorar Estructura
-1. Selecciona una conexión del sidebar
-2. Navega por esquemas y tablas
-3. Haz clic en una tabla para ver sus detalles
-4. Usa las pestañas para ver columnas, datos y estructura
+Los temas se gestionan a través del `ThemeContext` y se pueden cambiar dinámicamente.
 
-### 4. Generar Scripts
-1. Selecciona una tabla en el sidebar
-2. Ve a la pestaña "Datos" para obtener consultas SELECT
-3. Ve a la pestaña "Estructura" para obtener CREATE TABLE
-4. Usa los botones "Copiar" para copiar los scripts
+## Desarrollo
 
-## 🎯 Funcionalidades Avanzadas
+### Agregar Nuevos Componentes
 
-### Atajos de Teclado
-- **Ctrl+Enter**: Ejecutar consulta en el editor
-- **Ctrl+C**: Copiar scripts generados
+1. Crea el archivo en `src/components/`
+2. Exporta el componente como default
+3. Importa y usa en `App.tsx`
 
-### Características de Seguridad
-- Validación de entrada en formularios
-- Manejo seguro de credenciales
-- Verificación de conectividad antes de operaciones
+### Modificar Estilos
 
-### Optimizaciones
-- Carga lazy de datos de esquemas y tablas
-- Verificación periódica del estado del servidor
-- Caché de conexiones activas
+Los estilos están organizados en archivos CSS separados para cada componente:
 
-## 🐛 Solución de Problemas
+- `ComponentName.css` - Estilos específicos del componente
+- `index.css` - Estilos globales
 
-### Error de Conexión
-- Verifica que el backend esté ejecutándose en el puerto 3001
-- Confirma que las credenciales sean correctas
-- Revisa el estado del servidor en el header
+### Agregar Nuevas Funcionalidades
 
-### Problemas de Rendimiento
-- Usa consultas con LIMIT para tablas grandes
-- Cierra conexiones no utilizadas
-- Verifica la conectividad de red
+1. **Servicios**: Agrega métodos en `apiService.ts`
+2. **Interfaces**: Define tipos en el archivo de servicio correspondiente
+3. **Componentes**: Crea nuevos componentes en `src/components/`
 
-## 🤝 Contribución
+## Troubleshooting
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+### Problemas Comunes
 
-## 📄 Licencia
+1. **Error de conexión al backend**:
+   - Verifica que el backend esté ejecutándose en `http://localhost:3001`
+   - Revisa la consola del navegador para errores de red
+
+2. **Error de CORS**:
+   - Asegúrate de que el backend tenga CORS configurado correctamente
+
+3. **Problemas con Firebird**:
+   - Verifica que el servidor Firebird esté ejecutándose
+   - Confirma las credenciales y la ruta de la base de datos
+
+### Debugging
+
+- Usa las herramientas de desarrollador del navegador
+- Revisa la consola para errores de JavaScript
+- Verifica la pestaña Network para problemas de API
+
+## Contribución
+
+1. Fork el repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crea un Pull Request
+
+## Licencia
 
 Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## 📞 Soporte
-
-Para soporte técnico o preguntas, contacta al equipo de desarrollo o crea un issue en el repositorio.

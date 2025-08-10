@@ -24,11 +24,11 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
   // Usamos el tipo ConnectionConfig para tener tipado fuerte
   const [formData, setFormData] = useState<ConnectionConfig>({
     name: '', // Nombre descriptivo de la conexión
-    server: '', // Dirección del servidor SQL Server
+    host: '', // Dirección del servidor Firebird
     database: '', // Nombre de la base de datos
     username: '', // Usuario para autenticación
     password: '', // Contraseña para autenticación
-    port: 1433 // Puerto por defecto de SQL Server
+    port: 3050 // Puerto por defecto de Firebird
   });
 
   // Estado para controlar si el formulario está procesando una acción
@@ -49,11 +49,11 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
     if (isOpen) {
       setFormData({
         name: '',
-        server: '',
+        host: '',
         database: '',
         username: '',
         password: '',
-        port: 1433
+        port: 3050
       });
       setError('');
       setSuccess('');
@@ -77,7 +77,7 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
     // Actualizamos el estado del formulario
     setFormData(prev => ({
       ...prev, // Mantenemos todos los valores anteriores
-      [name]: name === 'port' ? parseInt(value) || 1433 : value // Si es el puerto, lo convertimos a número
+      [name]: name === 'port' ? parseInt(value) || 3050 : value // Si es el puerto, lo convertimos a número
     }));
   };
 
@@ -97,9 +97,9 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
 
   // Función para probar la conexión antes de guardarla
   const handleTestConnection = async () => {
-    // Validación básica: servidor y base de datos son obligatorios
-    if (!formData.server || !formData.database) {
-      setError('Server y database son campos requeridos para la prueba');
+    // Validación básica: host y base de datos son obligatorios
+    if (!formData.host || !formData.database) {
+      setError('Host y database son campos requeridos para la prueba');
       return;
     }
 
@@ -118,7 +118,7 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
       console.log('Resultado de la prueba:', result);
       
       if (result.success) {
-        setSuccess('✅ Prueba de conexión exitosa');
+                    setSuccess('Prueba de conexión exitosa');
       } else {
         setError(result.message || 'Error en la prueba de conexión');
       }
@@ -137,8 +137,8 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
     e.preventDefault(); // Prevenimos el comportamiento por defecto del formulario
     
     // Validación básica
-    if (!formData.name || !formData.server || !formData.database) {
-      setError('Nombre, servidor y base de datos son campos requeridos');
+    if (!formData.name || !formData.host || !formData.database) {
+      setError('Nombre, host y base de datos son campos requeridos');
       return;
     }
     
@@ -156,7 +156,7 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
       console.log('Resultado del agregado:', result);
       
       if (result.success) {
-        setSuccess('✅ Conexión agregada exitosamente');
+                    setSuccess('Conexión agregada exitosamente');
         // Notificamos al componente padre que la conexión se creó exitosamente
         onConnectionSuccess();
         // Cerramos el modal después de un breve delay para mostrar el mensaje de éxito
@@ -187,7 +187,7 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
       <div className="modal-container">
         {/* Header del modal */}
         <div className="modal-header">
-          <h2>Nueva Conexión de Base de Datos</h2>
+          <h2>Nueva Conexión de Base de Datos Firebird</h2>
           <button 
             className="modal-close-btn" 
             onClick={handleClose}
@@ -202,13 +202,13 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
         {/* Mostramos mensaje de error si existe */}
         {error && (
           <div className="error-message">
-            <strong>❌ Error:</strong> {error}
+            <strong><span className="error-icon"></span> Error:</strong> {error}
           </div>
         )}
         {/* Mostramos mensaje de éxito si existe */}
         {success && (
           <div className="success-message">
-            <strong>✅ Éxito:</strong> {success}
+            <strong><span className="success-icon"></span> Éxito:</strong> {success}
           </div>
         )}
 
@@ -224,19 +224,19 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
               value={formData.name}
               onChange={handleInputChange}
               required
-              placeholder="Mi Base de Datos"
+              placeholder="Mi Base de Datos Firebird"
               disabled={loading}
             />
           </div>
 
-          {/* ========== CAMPO: SERVIDOR ========== */}
+          {/* ========== CAMPO: HOST ========== */}
           <div className="form-group">
-            <label htmlFor="server">Servidor *</label>
+            <label htmlFor="host">Host *</label>
             <input
               type="text"
-              id="server"
-              name="server"
-              value={formData.server}
+              id="host"
+              name="host"
+              value={formData.host}
               onChange={handleInputChange}
               required
               placeholder="localhost o 192.168.1.100"
@@ -254,37 +254,35 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
               value={formData.database}
               onChange={handleInputChange}
               required
-              placeholder="nombre_base_datos"
+              placeholder="/path/to/database.fdb"
               disabled={loading}
             />
           </div>
 
           {/* ========== CAMPO: USUARIO ========== */}
           <div className="form-group">
-            <label htmlFor="username">Usuario *</label>
+            <label htmlFor="username">Usuario</label>
             <input
               type="text"
               id="username"
               name="username"
               value={formData.username}
               onChange={handleInputChange}
-              required
-              placeholder="usuario"
+              placeholder="SYSDBA"
               disabled={loading}
             />
           </div>
 
           {/* ========== CAMPO: CONTRASEÑA ========== */}
           <div className="form-group">
-            <label htmlFor="password">Contraseña *</label>
+            <label htmlFor="password">Contraseña</label>
             <input
               type="password"
               id="password"
               name="password"
               value={formData.password}
               onChange={handleInputChange}
-              required
-              placeholder="contraseña"
+              placeholder="masterkey"
               disabled={loading}
             />
           </div>
@@ -300,7 +298,7 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
               onChange={handleInputChange}
               min="1"
               max="65535"
-              placeholder="1433"
+              placeholder="3050"
               disabled={loading}
             />
           </div>
@@ -312,7 +310,7 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
               type="button"
               className={`test-btn ${loading && testMode ? 'loading' : ''}`}
               onClick={handleTestConnection}
-              disabled={loading || !formData.server || !formData.database}
+              disabled={loading || !formData.host || !formData.database}
             >
               {loading && testMode ? 'Probando...' : 'Probar Conexión'}
             </button>
@@ -321,7 +319,7 @@ const ConnectionForm: React.FC<ConnectionFormProps> = ({ onConnectionSuccess, is
             <button
               type="submit"
               className={`test-btn ${loading && !testMode ? 'loading' : ''}`}
-              disabled={loading || !formData.name || !formData.server || !formData.database}
+              disabled={loading || !formData.name || !formData.host || !formData.database}
             >
               {loading && !testMode ? 'Agregando...' : 'Agregar Conexión'}
             </button>
