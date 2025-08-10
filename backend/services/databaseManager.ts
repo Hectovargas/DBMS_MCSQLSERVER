@@ -160,7 +160,7 @@ class databaseManager {
         }
     }
 
-    // Intenta abrir y cerrar una conexión para verificar parámetros
+
     private async intentarConexion(firebirdConfig: any): Promise<FirebirdConnectionResponse> {
         return new Promise((resolve, reject) => {
 
@@ -545,6 +545,175 @@ class databaseManager {
         }
 
         return result;
+    }
+
+    async getViews(connectionId: string, schemaName: string = ''): Promise<any> {
+        let query = `
+          SELECT 
+            TRIM(RDB$RELATION_NAME) as VIEW_NAME,
+            TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) as SCHEMA_NAME,
+            RDB$DESCRIPTION as DESCRIPTION
+          FROM RDB$RELATIONS 
+          WHERE RDB$VIEW_BLR IS NOT NULL 
+            AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+        `;
+
+        if (schemaName) {
+            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
+        }
+
+        query += ` ORDER BY RDB$RELATION_NAME`;
+
+        const result = await this.executeQuery(connectionId, query);
+
+        if (result.success && this.conexiones[connectionId]) {
+            this.conexiones[connectionId].isConnected = true;
+            this.conexiones[connectionId].config.isActive = true;
+            this.conexiones[connectionId].lastUsed = new Date();
+        }
+
+        return result;
+    }
+
+    async getPackages(connectionId: string, schemaName: string = ''): Promise<any> {
+        let query = `
+          SELECT 
+            TRIM(RDB$PACKAGE_NAME) AS PACKAGE_NAME,
+            TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
+            RDB$SQL_SECURITY AS SQL_SECURITY,
+            RDB$DESCRIPTION AS DESCRIPTION
+          FROM RDB$PACKAGES
+          WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+        `;
+
+        if (schemaName) {
+            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
+        }
+
+        query += ` ORDER BY RDB$PACKAGE_NAME`;
+
+        return this.executeQuery(connectionId, query);
+    }
+
+    async getProcedures(connectionId: string, schemaName: string = ''): Promise<any> {
+        let query = `
+          SELECT 
+            TRIM(RDB$PROCEDURE_NAME) AS PROCEDURE_NAME,
+            TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
+            RDB$DESCRIPTION AS DESCRIPTION
+          FROM RDB$PROCEDURES
+          WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+        `;
+
+        if (schemaName) {
+            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
+        }
+
+        query += ` ORDER BY RDB$PROCEDURE_NAME`;
+
+        return this.executeQuery(connectionId, query);
+    }
+
+    async getFunctions(connectionId: string, schemaName: string = ''): Promise<any> {
+        let query = `
+          SELECT 
+            TRIM(RDB$FUNCTION_NAME) AS FUNCTION_NAME,
+            TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
+            RDB$DESCRIPTION AS DESCRIPTION
+          FROM RDB$FUNCTIONS
+          WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+        `;
+
+        if (schemaName) {
+            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
+        }
+
+        query += ` ORDER BY RDB$FUNCTION_NAME`;
+
+        return this.executeQuery(connectionId, query);
+    }
+
+    async getSequences(connectionId: string): Promise<any> {
+        const query = `
+          SELECT 
+            TRIM(RDB$GENERATOR_NAME) AS SEQUENCE_NAME,
+            RDB$DESCRIPTION AS DESCRIPTION
+          FROM RDB$GENERATORS
+          WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+            AND UPPER(RDB$GENERATOR_NAME) NOT LIKE 'RDB$%'
+          ORDER BY RDB$GENERATOR_NAME
+        `;
+
+        return this.executeQuery(connectionId, query);
+    }
+
+    async getTriggers(connectionId: string, schemaName: string = ''): Promise<any> {
+        let query = `
+          SELECT 
+            TRIM(T.RDB$TRIGGER_NAME) AS TRIGGER_NAME,
+            TRIM(T.RDB$RELATION_NAME) AS RELATION_NAME,
+            TRIM(COALESCE(R.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
+            T.RDB$TRIGGER_TYPE AS TRIGGER_TYPE,
+            T.RDB$TRIGGER_SEQUENCE AS SEQUENCE,
+            T.RDB$DESCRIPTION AS DESCRIPTION
+          FROM RDB$TRIGGERS T
+          LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = T.RDB$RELATION_NAME
+          WHERE (T.RDB$SYSTEM_FLAG IS NULL OR T.RDB$SYSTEM_FLAG = 0)
+            AND (T.RDB$TRIGGER_NAME NOT LIKE 'RDB$%')
+        `;
+
+        if (schemaName) {
+            query += ` AND TRIM(R.RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
+        }
+
+        query += ` ORDER BY T.RDB$TRIGGER_NAME`;
+
+        return this.executeQuery(connectionId, query);
+    }
+
+    async getIndexes(connectionId: string, schemaName: string = ''): Promise<any> {
+        let query = `
+          SELECT 
+            TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
+            TRIM(I.RDB$RELATION_NAME) AS RELATION_NAME,
+            TRIM(COALESCE(R.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
+            I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
+            I.RDB$INACTIVE AS IS_INACTIVE
+          FROM RDB$INDICES I
+          LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
+          WHERE (I.RDB$SYSTEM_FLAG IS NULL OR I.RDB$SYSTEM_FLAG = 0)
+            AND (I.RDB$INDEX_NAME NOT LIKE 'RDB$%')
+        `;
+
+        if (schemaName) {
+            query += ` AND TRIM(R.RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
+        }
+
+        query += ` ORDER BY I.RDB$INDEX_NAME`;
+
+        return this.executeQuery(connectionId, query);
+    }
+
+    async getUsers(connectionId: string): Promise<any> {
+        const query = `
+          SELECT 
+            TRIM(SEC$USER_NAME) AS USER_NAME,
+            SEC$ACTIVE AS ACTIVE,
+            TRIM(SEC$PLUGIN) AS PLUGIN,
+            TRIM(SEC$FIRST_NAME) AS FIRST_NAME,
+            TRIM(SEC$LAST_NAME) AS LAST_NAME
+          FROM SEC$USERS
+          ORDER BY SEC$USER_NAME
+        `;
+        return this.executeQuery(connectionId, query);
+    }
+
+    async getTablespaces(connectionId: string): Promise<any> {
+        return {
+            success: true,
+            data: [],
+            message: 'Tablespaces no aplica en Firebird 3.0'
+        };
     }
 
     async getTablesColumns(

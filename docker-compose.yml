@@ -1,6 +1,6 @@
 services:
   firebird:
-    image: jacobalberty/firebird:2.5-sc
+    image: jacobalberty/firebird:3.0
     container_name: firebird-db
     environment:
       FIREBIRD_DATABASE: testdb.fdb
@@ -8,9 +8,10 @@ services:
       FIREBIRD_PASSWORD: masterkey
       ISC_PASSWORD: masterkey
     ports:
-      - "3050:3050"
+      - "3051:3050"
     volumes:
       - firebird_data:/firebird/data
+      - ./firebird.conf:/firebird/etc/firebird.conf:ro
     restart: unless-stopped
 
 volumes:

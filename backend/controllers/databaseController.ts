@@ -282,6 +282,164 @@ class databaseController {
     }
   }
 
+  async getViews(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, schemaName = '' } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getViews(connectionId, schemaName);
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener vistas', error: { message: error.message } });
+    }
+  }
+
+  async getPackages(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, schemaName = '' } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getPackages(connectionId, schemaName);
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener paquetes', error: { message: error.message } });
+    }
+  }
+
+  async getProcedures(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, schemaName = '' } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getProcedures(connectionId, schemaName);
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener procedimientos', error: { message: error.message } });
+    }
+  }
+
+  async getFunctions(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, schemaName = '' } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getFunctions(connectionId, schemaName);
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener funciones', error: { message: error.message } });
+    }
+  }
+
+  async getSequences(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getSequences(connectionId);
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener secuencias', error: { message: error.message } });
+    }
+  }
+
+  async getTriggers(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, schemaName = '' } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getTriggers(connectionId, schemaName);
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener triggers', error: { message: error.message } });
+    }
+  }
+
+  async getIndexes(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, schemaName = '' } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getIndexes(connectionId, schemaName);
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener índices', error: { message: error.message } });
+    }
+  }
+
+  async getUsers(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getUsers(connectionId);
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener usuarios', error: { message: error.message } });
+    }
+  }
+
+  async getTablespaces(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId } = req.params;
+      if (!connectionId) {
+        res.status(400).json({ success: false, message: 'connectionId es requerido' });
+        return;
+      }
+      const result = await databaseManager.getTablespaces(connectionId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Error al obtener tablespaces', error: { message: error.message } });
+    }
+  }
+
   async getTableColumns(req: any, res: any): Promise<void> {
     try {
       const { connectionId, tableName } = req.params;

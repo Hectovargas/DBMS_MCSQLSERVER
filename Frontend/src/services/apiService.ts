@@ -33,6 +33,15 @@ export interface Table {
   description?: string;
 }
 
+export interface View { view_name: string; schema_name: string; description?: string }
+export interface Package { package_name: string; schema_name: string; description?: string }
+export interface Procedure { procedure_name: string; schema_name: string; description?: string }
+export interface DbFunction { function_name: string; schema_name: string; description?: string }
+export interface Sequence { sequence_name: string; description?: string }
+export interface Trigger { trigger_name: string; relation_name?: string; schema_name: string; description?: string }
+export interface Index { index_name: string; relation_name?: string; schema_name: string; is_unique?: number; is_inactive?: number }
+export interface DbUser { user_name: string; active?: number; plugin?: string; first_name?: string; last_name?: string }
+
 export interface Column {
   name: string;
   dataType: string;
@@ -240,6 +249,117 @@ class ApiService {
       return await this.handleResponse(response);
     } catch (error) {
       console.error('Error en getTables:', error);
+      throw error;
+    }
+  }
+
+  // Obtener vistas
+  async getViews(connectionId: string, schemaName: string = ''): Promise<any> {
+    try {
+      let url = `${API_BASE}/${connectionId}/schemas`;
+      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/views` : `/views`;
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getViews:', error);
+      throw error;
+    }
+  }
+
+  // Obtener paquetes
+  async getPackages(connectionId: string, schemaName: string = ''): Promise<any> {
+    try {
+      let url = `${API_BASE}/${connectionId}/schemas`;
+      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/packages` : `/packages`;
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getPackages:', error);
+      throw error;
+    }
+  }
+
+  // Obtener procedimientos
+  async getProcedures(connectionId: string, schemaName: string = ''): Promise<any> {
+    try {
+      let url = `${API_BASE}/${connectionId}/schemas`;
+      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/procedures` : `/procedures`;
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getProcedures:', error);
+      throw error;
+    }
+  }
+
+  // Obtener funciones
+  async getFunctions(connectionId: string, schemaName: string = ''): Promise<any> {
+    try {
+      let url = `${API_BASE}/${connectionId}/schemas`;
+      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/functions` : `/functions`;
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getFunctions:', error);
+      throw error;
+    }
+  }
+
+  // Obtener secuencias
+  async getSequences(connectionId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE}/${connectionId}/sequences`);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getSequences:', error);
+      throw error;
+    }
+  }
+
+  // Obtener triggers
+  async getTriggers(connectionId: string, schemaName: string = ''): Promise<any> {
+    try {
+      let url = `${API_BASE}/${connectionId}/schemas`;
+      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/triggers` : `/triggers`;
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getTriggers:', error);
+      throw error;
+    }
+  }
+
+  // Obtener índices
+  async getIndexes(connectionId: string, schemaName: string = ''): Promise<any> {
+    try {
+      let url = `${API_BASE}/${connectionId}/schemas`;
+      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/indexes` : `/indexes`;
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getIndexes:', error);
+      throw error;
+    }
+  }
+
+  // Obtener usuarios
+  async getUsers(connectionId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE}/${connectionId}/users`);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getUsers:', error);
+      throw error;
+    }
+  }
+
+  // Obtener tablespaces (no aplica, pero endpoint informativo)
+  async getTablespaces(connectionId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE}/${connectionId}/tablespaces`);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en getTablespaces:', error);
       throw error;
     }
   }
