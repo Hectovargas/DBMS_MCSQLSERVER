@@ -469,7 +469,7 @@ const DatabaseSidebar = forwardRef<DatabaseSidebarRef, DatabaseSidebarProps>(({
                           if (onConnectionSelect) onConnectionSelect(connection.id);
                         }}
                       >
-                        🔍 Editor de Consultas
+                        Editor de Consultas
                       </button>
                     </div>
                   </div>
