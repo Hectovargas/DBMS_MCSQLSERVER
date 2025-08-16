@@ -570,6 +570,7 @@ const DatabaseSidebar = forwardRef(({
             {sidebarState === 'collapsed' ? <span className="expand-right-icon"></span> :
               sidebarState === 'expanded' ? <span className="expand-left-icon"></span> : <span className="expand-center-icon"></span>}
           </button>
+          
           {/* Encabezado de la barra lateral */}
           <div className="sidebar-header">
             <h3>Conexiones de Base de Datos</h3>
@@ -592,19 +593,131 @@ const DatabaseSidebar = forwardRef(({
 
           {loading && <div className="loading">Cargando...</div>}
 
-          {/* Lista de conexiones */}
+                {/* Lista de conexiones como estructura de árbol */}
           <div className="connections-list">
             {connections.map((connection) => {
               const isExpanded = expandedConnections.has(connection.id);
               const schemas = connectionSchemas[connection.id] || [];
               const isLoadingSchemas = loadingSchemas.has(connection.id);
+              const schemaItems: React.ReactNode[] = [];              // Procesar los esquemas y sus elementos
+              schemas.forEach(schema => {
+                const schemaKey = `${connection.id}-${schema.schema_name}`;
+                const tables = schemaTables[schemaKey] || [];
+                const views = schemaViews[schemaKey] || [];
+                const procedures = schemaProcedures[schemaKey] || [];
+                const functions = schemaFunctions[schemaKey] || [];
+                const triggers = schemaTriggers[schemaKey] || [];
+                const indexes = schemaIndexes[schemaKey] || [];
+
+                // Añadir elementos del esquema
+                const schemaChildren: React.ReactNode[] = [];
+
+                // Añadir tablas
+                if (tables.length > 0) {
+                  tables.forEach(table => {
+                    schemaChildren.push(
+                      <div key={`table-${schemaKey}-${table.table_name}`} className="tree-item table">
+                        <div className="tree-content" onClick={() => onTableSelect && onTableSelect(connection.id, table.table_name, schema.schema_name)}>
+                          <span className="tree-icon">📄</span>
+                          <span className="tree-label">{table.table_name}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                }
+
+                // Añadir vistas
+                if (views.length > 0) {
+                  views.forEach(view => {
+                    schemaChildren.push(
+                      <div key={`view-${schemaKey}-${view.view_name}`} className="tree-item view">
+                        <div className="tree-content">
+                          <span className="tree-icon">👁️</span>
+                          <span className="tree-label">{view.view_name}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                }
+
+                // Añadir procedimientos
+                if (procedures.length > 0) {
+                  procedures.forEach(proc => {
+                    schemaChildren.push(
+                      <div key={`proc-${schemaKey}-${proc.procedure_name}`} className="tree-item procedure">
+                        <div className="tree-content">
+                          <span className="tree-icon">⚡</span>
+                          <span className="tree-label">{proc.procedure_name}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                }
+
+                // Añadir funciones
+                if (functions.length > 0) {
+                  functions.forEach(fn => {
+                    schemaChildren.push(
+                      <div key={`fn-${schemaKey}-${fn.function_name}`} className="tree-item function">
+                        <div className="tree-content">
+                          <span className="tree-icon">ƒ</span>
+                          <span className="tree-label">{fn.function_name}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                }
+
+                // Añadir triggers
+                if (triggers.length > 0) {
+                  triggers.forEach(tr => {
+                    schemaChildren.push(
+                      <div key={`tr-${schemaKey}-${tr.trigger_name}`} className="tree-item trigger">
+                        <div className="tree-content">
+                          <span className="tree-icon">🔄</span>
+                          <span className="tree-label">{tr.trigger_name}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                }
+
+                // Añadir índices
+                if (indexes.length > 0) {
+                  indexes.forEach(ix => {
+                    schemaChildren.push(
+                      <div key={`ix-${schemaKey}-${ix.index_name}`} className="tree-item index">
+                        <div className="tree-content">
+                          <span className="tree-icon">📊</span>
+                          <span className="tree-label">{ix.index_name}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                }
+
+                // Añadir el esquema con sus elementos hijos
+                if (schemaChildren.length > 0) {
+                  schemaItems.push(
+                    <div key={`schema-${schemaKey}`} className="tree-item schema">
+                      <div className="tree-content" onClick={() => toggleSchemasDropdown(connection.id)}>
+                        <span className="tree-icon">📁</span>
+                        <span className="tree-label">{schema.schema_name}</span>
+                      </div>
+                      {showSchemasDropdown.has(connection.id) && (
+                        <div className="tree-structure">
+                          {schemaChildren}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              });
 
               return (
-                <div key={connection.id} className="connection-item">
-
-                  {/* Encabezado de cada conexión */}
-                  <div
-                    className="connection-header"
+                <div key={connection.id} className="tree-item connection">
+                  <div 
+                    className="tree-content"
                     onClick={() => toggleConnection(connection.id)}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -616,10 +729,8 @@ const DatabaseSidebar = forwardRef(({
                       });
                     }}
                   >
-                    <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}>
-                      {isExpanded ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                    </span>
-                    <span className="connection-name">{connection.name}</span>
+                    <span className="tree-icon">🔌</span>
+                    <span className="tree-label">{connection.name}</span>
                     <span className="connection-status">
                       {connection.isActive ? <span className="status-active-icon"></span> : <span className="status-inactive-icon"></span>}
                     </span>
@@ -627,7 +738,7 @@ const DatabaseSidebar = forwardRef(({
 
                   {/* Contenido expandible */}
                   {isExpanded && (
-                    <div className="connection-content">
+                    <div className="tree-structure">
                       {/* Sección de esquemas */}
                       <div className="schemas-section">
                         {/* Header clickeable para esquemas */}
@@ -658,12 +769,6 @@ const DatabaseSidebar = forwardRef(({
 
                               return (
                                 <div key={`schema-${connection.id}-${schema.schema_name}`} className="schema-item">
-
-                                  {/* Header del esquema */}
-                                  <div className="schema-header">
-                                    <span className="schema-name">{schema.schema_name}</span>
-                                    <span className="schema-owner">(Esquema)</span>
-                                  </div>
 
                                   {/* NUEVA SECCIÓN: Header clickeable para tablas */}
                                   <div
@@ -966,27 +1071,17 @@ const DatabaseSidebar = forwardRef(({
               );
             })}
           </div>
-
           {/* Mensaje cuando no hay conexiones */}
           {connections.length === 0 && !loading && (
-            <div className="no-connections">
-              <p>No hay conexiones activas</p>
-              <p>Conecta a una base de datos para comenzar</p>
+            <div className="tree-item empty">
+              <div className="tree-content">
+                <span className="tree-icon">ℹ️</span>
+                <span className="tree-label">
+                  No hay conexiones. Conecta a una base de datos para comenzar.
+                </span>
+              </div>
             </div>
           )}
-
-          <button
-            className="sidebar-toggle"
-            onClick={() => {
-              setSidebarState(prev =>
-                prev === 'normal' ? 'collapsed' :
-                  prev === 'collapsed' ? 'expanded' : 'normal'
-              );
-            }}
-          >
-            {sidebarState === 'collapsed' ? <span className="expand-right-icon"></span> :
-              sidebarState === 'expanded' ? <span className="expand-left-icon"></span> : <span className="expand-center-icon"></span>}
-          </button>
         </div>
       </div>
 
@@ -1001,32 +1096,36 @@ const DatabaseSidebar = forwardRef(({
             zIndex: 1000
           }}
         >
-          <div className="context-menu-item" onClick={() => {
+          <div className="context-menu-item connect" onClick={() => {
             selectConnection(contextMenu.connectionId);
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            Conectar
+            <span className="tree-icon">🔌</span>
+            <span>Conectar</span>
           </div>
-          <div className="context-menu-item" onClick={() => {
+          <div className="context-menu-item disconnect" onClick={() => {
             disconnectDatabase(contextMenu.connectionId);
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            Desconectar
+            <span className="tree-icon">🔌</span>
+            <span>Desconectar</span>
           </div>
-          <div className="context-menu-item" onClick={() => {
+          <div className="context-menu-item query" onClick={() => {
             if (onViewChange) onViewChange('query');
             if (onConnectionSelect) onConnectionSelect(contextMenu.connectionId);
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            Editor de Consultas
+            <span className="tree-icon">📝</span>
+            <span>Editor de Consultas</span>
           </div>
-          <div className="context-menu-item" onClick={() => {
+          <div className="context-menu-item delete" onClick={() => {
             if (confirm(`¿Estás seguro de que quieres eliminar esta conexión?`)) {
               deleteConnection(contextMenu.connectionId);
             }
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            Eliminar
+            <span className="tree-icon">🗑️</span>
+            <span>Eliminar</span>
           </div>
         </div>
       )}
@@ -1043,7 +1142,6 @@ const DatabaseSidebar = forwardRef(({
             right: 0,
             bottom: 0,
             zIndex: 999,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)'
           }}
         />
       )}

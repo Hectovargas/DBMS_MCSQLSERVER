@@ -7,12 +7,12 @@
   height: calc(100vh - 80px); /* Altura fija: 100% de la ventana menos el header */
   background: var(--sidebar-bg); /* Color de fondo del sidebar usando variable CSS */
   border-right: 1px solid var(--border-color); /* Borde derecho usando variable CSS */
-  overflow-y: auto; /* Permite scroll vertical independiente */
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   flex-shrink: 0; /* Evita que se encoja */
   display: flex;
   flex-direction: column;
   transition: background-color 0.3s, border-color 0.3s; /* Transición suave al cambiar tema */
+  position: relative; /* Para posicionar elementos internos */
 }
 
 /* ========== ENCABEZADO DEL SIDEBAR ========== */
@@ -37,6 +37,76 @@
   overflow-y: auto; /* Permite scroll en el contenido */
   min-height: 0; /* Permite que el contenido se encoja */
 }
+
+/* ========== ESTILOS PARA LA ESTRUCTURA DE ÁRBOL ========== */
+.tree-structure {
+  padding-left: 16px; /* Indentación para los elementos hijos */
+}
+
+.tree-item {
+  position: relative;
+  padding: 4px 0;
+}
+
+.tree-item::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--border-color);
+}
+
+.tree-item::after {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 12px;
+  width: 12px;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.tree-content {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tree-content:hover {
+  background-color: var(--hover-bg);
+}
+
+.tree-icon {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tree-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* Estilos específicos por tipo de elemento */
+.tree-item.connection > .tree-content > .tree-icon { color: #4CAF50; }
+.tree-item.schema > .tree-content > .tree-icon { color: #2196F3; }
+.tree-item.table > .tree-content > .tree-icon { color: #FF9800; }
+.tree-item.view > .tree-content > .tree-icon { color: #9C27B0; }
+.tree-item.procedure > .tree-content > .tree-icon { color: #E91E63; }
+.tree-item.function > .tree-content > .tree-icon { color: #673AB7; }
+.tree-item.trigger > .tree-content > .tree-icon { color: #F44336; }
+.tree-item.index > .tree-content > .tree-icon { color: #795548; }
+.tree-item.sequence > .tree-content > .tree-icon { color: #009688; }
+.tree-item.user > .tree-content > .tree-icon { color: #607D8B; }
 
 /* Título del encabezado */
 .sidebar-header h3 {
@@ -254,12 +324,8 @@
 
 /* ========== ELEMENTO INDIVIDUAL DE ESQUEMA ========== */
 .schema-item {
-  margin-bottom: 3px; /* Espacio entre esquemas */
-  border-radius: 4px; /* Bordes redondeados */
-  overflow: hidden; /* Oculta contenido que se salga */
-  background: var(--card-bg); /* Fondo usando variable CSS */
-  border: 1px solid var(--border-color); /* Borde usando variable CSS */
-  transition: background-color 0.3s, border-color 0.3s; /* Transición suave */
+  margin: 2px 0; /* Espacio uniforme arriba y abajo */
+  transition: background-color 0.3s; /* Transición suave */
 }
 
 /* ========== ENCABEZADO DEL ESQUEMA (CLICKEABLE) ========== */
@@ -302,18 +368,18 @@
 
 /* ========== LISTA DE TABLAS ========== */
 .tables-list {
-  padding: 8px 12px; /* Espacio interno */
+  padding: 0; /* Quitamos el padding para alinear con el árbol */
 }
 
 /* ========== ELEMENTO INDIVIDUAL DE TABLA ========== */
 .table-item {
   display: flex; /* Habilita flexbox */
   align-items: center; /* Centra verticalmente */
-  padding: 6px 8px; /* Espacio interno */
+  padding: 4px 8px; /* Espacio interno más compacto */
   cursor: pointer; /* Cursor de mano */
   border-radius: 3px; /* Bordes redondeados */
   transition: background-color 0.2s; /* Animación suave */
-  margin-bottom: 2px; /* Espacio entre tablas */
+  margin: 2px 0; /* Espacio consistente arriba y abajo */
 }
 
 /* Efecto hover de la tabla */
@@ -369,14 +435,9 @@
 
 /* NUEVA CLASE para el dropdown de esquemas */
 .schemas-dropdown {
-  background: var(--bg-secondary); /* Fondo usando variable CSS */
-  border: 1px solid var(--border-color); /* Borde usando variable CSS */
-  border-radius: 4px;
-  margin-top: 4px;
-  padding: 8px;
-  max-height: 300px; /* Altura máxima para scroll */
-  overflow-y: auto; /* Scroll si hay muchos esquemas */
-  transition: background-color 0.3s, border-color 0.3s; /* Transición suave */
+  background: transparent;
+  padding: 4px 0;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 /* NUEVA CLASE para contador de esquemas */
@@ -442,70 +503,181 @@
   gap: 8px;
   margin-top: 12px;
 }
-/* CONTENEDOR PRINCIPAL */
-.sidebar-container {
-  position: relative;
-  display: flex;
-  height: 100%;
-  background: var(--sidebar-bg);
-}
-
-/* SIDEBAR PRINCIPAL */
+/* ========== CONTENEDOR PRINCIPAL DEL SIDEBAR ========== */
 .database-sidebar {
   width: 300px;
-  height: 100%;
+  min-width: 250px;
+  max-width: 400px;
+  min-height: calc(100vh - 80px);
+  height: calc(100vh - 80px);
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-  overflow-y: auto;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  flex-shrink: 0;
   display: flex;
-  z-index: 1;
   flex-direction: column;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
-/* ESTADOS DEL SIDEBAR */
-.database-sidebar.collapsed {
-  width: 0px;
-  min-width: 0px;
-}
-
-.database-sidebar.expanded {
-  width: 400px;
-  min-width: 400px;
-}
-
-/* BOTÓN TOGGLE EXTERNO */
-.sidebar-toggle {
-  border-radius: 0;
-  width: 30px;        /* Ancho del botón */
-  height: 24px;       /* Altura del botón (puedes ajustar) */
-  /*padding: 0 5px;*/  /* Espacio interno horizontal */
-  position: absolute;
-  right: -35px; /* Posición fuera del sidebar */
-  top: 18px;
-  width: 30px;
-  height: 30px;
+/* ========== ENCABEZADO DEL SIDEBAR ========== */
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
   background: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-primary);
+  transition: color 0.3s;
+}
+
+/* ========== LISTA DE CONEXIONES ========== */
+.connections-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* ========== ESTRUCTURA DE ÁRBOL ========== */
+.tree-structure {
+  padding-left: 16px;
+  margin-left: 0;
+}
+
+.tree-item {
+  position: relative;
+  margin: 2px 0;
+}
+
+.tree-item::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--border-color);
+  opacity: 0.5;
+}
+
+.tree-item::after {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 12px;
+  width: 12px;
+  height: 1px;
+  background-color: var(--border-color);
+  opacity: 0.5;
+}
+
+.tree-content {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.tree-content:hover {
+  background-color: var(--hover-bg);
+}
+
+.tree-icon {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
-  transition: all 0.2s ease;
+  font-size: 14px;
 }
 
-.sidebar-toggle:hover {
-  background: var(--hover-bg);
-  transform: scale(1.1);
+.tree-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ========== ESTILOS PARA ICONOS DEL SIDEBAR ========== */
+/* Estilos específicos por tipo */
+.tree-item.connection > .tree-content { font-weight: bold; }
+.tree-item.schema > .tree-content { font-weight: 500; }
+.tree-item.table > .tree-content { color: var(--text-primary); }
+.tree-item.view > .tree-content { color: var(--text-secondary); }
+.tree-item.loading > .tree-content { color: var(--text-secondary); font-style: italic; }
+.tree-item.empty > .tree-content { color: var(--text-secondary); font-style: italic; }
 
-/* Iconos de expandir */
-.expand-right-icon, .expand-left-icon, .expand-center-icon, .expand-down-icon {
+/* Iconos de estado */
+.connection-status {
+  margin-left: 8px;
+}
+
+.status-active-icon,
+.status-inactive-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   display: inline-block;
-  width: 12px;
-  height: 12px;
+}
+
+.status-active-icon {
+  background-color: #28a745;
+  box-shadow: 0 0 4px rgba(40, 167, 69, 0.5);
+}
+
+.status-inactive-icon {
+  background-color: #dc3545;
+  box-shadow: 0 0 4px rgba(220, 53, 69, 0.5);
+}
+
+/* Botones de acción */
+.refresh-btn,
+.add-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+}
+
+.refresh-btn:hover,
+.add-btn:hover {
+  background-color: var(--hover-bg);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Iconos */
+.expand-right-icon,
+.expand-left-icon,
+.expand-center-icon,
+.expand-down-icon,
+.refresh-icon,
+.add-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -520,23 +692,8 @@
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>');
 }
 
-.expand-center-icon {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>');
-}
-
 .expand-down-icon {
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>');
-}
-
-/* Iconos de botones */
-.refresh-icon, .add-icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  filter: var(--icon-filter);
 }
 
 .refresh-icon {
@@ -547,48 +704,9 @@
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>');
 }
 
-/* Iconos de estado */
-.status-active-icon, .status-inactive-icon {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-.status-active-icon {
-  background-color: #28a745;
-}
-
-.status-inactive-icon {
-  background-color: #dc3545;
-}
-
-/* Icono de tabla */
-.table-icon-img {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  filter: var(--icon-filter);
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm2 2h2v2H7V7zm4 0h2v2h-2V7zm4 0h2v2h-2V7z"/></svg>');
-}
-
-/* Icono de carga */
+/* Loading */
 .loading-icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
   animation: spin 1s linear infinite;
-  filter: var(--icon-filter);
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z"/></svg>');
 }
 
 @keyframes spin {
@@ -596,84 +714,114 @@
   to { transform: rotate(360deg); }
 }
 
-/* CONTENIDO DEL SIDEBAR */
-.sidebar-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
+/* Estados del Sidebar */
+.database-sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border: none;
 }
 
-/* HEADER DEL SIDEBAR */
-.sidebar-header {
-  padding: 15px;
+.database-sidebar.expanded {
+  width: 400px;
+  min-width: 400px;
+}
+
+/* Botón de toggle */
+.sidebar-toggle {
+  position: absolute;
+  right: -24px;
+  top: 12px;
+  width: 24px;
+  height: 24px;
   background: var(--card-bg);
-  border-bottom: 1px solid var(--border-color);
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-/* ESTILOS PARA ESTADO COLLAPSED */
-.database-sidebar.collapsed .sidebar-header {
-  flex-direction: column;
   justify-content: center;
-  gap: 10px;
-  padding: 10px 5px;
+  transition: all 0.2s ease;
+  z-index: 100;
 }
 
-.database-sidebar.collapsed .sidebar-header h3,
-.database-sidebar.collapsed .header-buttons {
-  display: none;
+.sidebar-toggle:hover {
+  background: var(--hover-bg);
 }
 
-.database-sidebar.collapsed .connection-item {
-  display: flex;
-  justify-content: center;
-  padding: 10px 0;
-}
-
-.database-sidebar.collapsed .connection-name,
-.database-sidebar.collapsed .connection-status,
-.database-sidebar.collapsed .connection-content {
-  display: none;
-}
-
-/* Estilos para el menú contextual */
+/* Menú contextual */
 .context-menu {
-  background-color: #252526;
-  border: 1px solid #454545;
-  border-radius: 4px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  min-width: 160px;
-  padding: 4px 0;
+  min-width: 180px;
+  padding: 4px;
 }
 
 .context-menu-item {
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 13px;
-  color: #ffffff;
   display: flex;
   align-items: center;
-  transition: background-color 0.2s;
-}
-
-.context-menu-item.connect {
-  background-color: #00ff00; /* Verde */
-}
-
-.context-menu-item.disconnect {
-  background-color: #ffff00; /* Amarillo */
-}
-
-.context-menu-item.delete {
-  background-color: #ff0000; /* Rojo */
-}
-
-.context-menu-item.query {
-  background-color: #0000ff; /* Azul */
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .context-menu-item:hover {
-  filter: brightness(85%);
+  background-color: var(--hover-bg);
+}
+
+.context-menu-item span:last-child {
+  margin-left: 8px;
+}
+
+.context-menu-item.connect { color: var(--text-primary); }
+.context-menu-item.disconnect { color: var(--text-primary); }
+.context-menu-item.query { color: var(--text-primary); }
+.context-menu-item.delete { color: var(--text-primary); }
+
+/* ========== INDENTACION JERARQUICA ========== */
+/* Nivel 1 - Esquemas */
+.schema-item {
+  margin-left: 8px;
+}
+
+/* Nivel 2 - Categorías (Tablas, Vistas, etc) */
+.schema-category {
+  margin-left: 16px;
+}
+
+/* Nivel 3 - Elementos individuales (tablas, vistas, procedimientos) */
+.schema-element {
+  margin-left: 24px;
+}
+
+/* Ajustes para el árbol */
+.tree-structure .tree-item.schema > .tree-content {
+  padding-left: 16px;
+}
+
+.tree-structure .schema-category > .tree-content {
+  padding-left: 24px;
+}
+
+.tree-structure .schema-element > .tree-content {
+  padding-left: 32px;
+}
+
+/* Ajustar líneas del árbol para la nueva estructura */
+.tree-item.schema > .tree-content::before {
+  left: 0;
+}
+
+.schema-category > .tree-content::before {
+  left: 8px;
+}
+
+.schema-element > .tree-content::before {
+  left: 16px;
 }
