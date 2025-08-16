@@ -92,7 +92,7 @@
 .connection-header {
   display: flex; /* Habilita flexbox */
   align-items: center; /* Centra verticalmente los elementos */
-  padding: 12px 15px; /* Espacio interno */
+  padding: 8px 15px; /* Espacio interno */
   cursor: pointer; /* Cambia el cursor a mano */
   background: var(--card-bg); /* Fondo usando variable CSS */
   transition: background-color 0.2s; /* Animación suave */
@@ -148,7 +148,7 @@
 
 /* ========== ELEMENTO INDIVIDUAL DE DETALLE ========== */
 .detail-item {
-  margin-bottom: 8px; /* Espacio entre detalles */
+  margin-bottom: 5px; /* Espacio entre detalles */
   font-size: 13px; /* Tamaño de fuente pequeño */
   color: var(--text-secondary); /* Color del texto usando variable CSS */
   transition: color 0.3s; /* Transición suave */
@@ -636,4 +636,44 @@
 .database-sidebar.collapsed .connection-status,
 .database-sidebar.collapsed .connection-content {
   display: none;
+}
+
+/* Estilos para el menú contextual */
+.context-menu {
+  background-color: #252526;
+  border: 1px solid #454545;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+  padding: 4px 0;
+}
+
+.context-menu-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.context-menu-item.connect {
+  background-color: #00ff00; /* Verde */
+}
+
+.context-menu-item.disconnect {
+  background-color: #ffff00; /* Amarillo */
+}
+
+.context-menu-item.delete {
+  background-color: #ff0000; /* Rojo */
+}
+
+.context-menu-item.query {
+  background-color: #0000ff; /* Azul */
+}
+
+.context-menu-item:hover {
+  filter: brightness(85%);
 }

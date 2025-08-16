@@ -1,14 +1,9 @@
-// Importamos React y los hooks que necesitamos
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import type { Ref } from 'react';
-// Importamos el servicio para hacer llamadas a la API
 import apiService from '../services/apiService';
-// Importamos los tipos TypeScript para tener tipado fuerte
 import type { DatabaseConnection, Schema, Table } from '../services/apiService';
-// Importamos los estilos CSS específicos para este componente
 import './DatabaseSidebar.css';
 
-// Definimos la interfaz TypeScript para las props que recibe el componente
 interface DatabaseSidebarProps {
   onConnectionSelect?: (connectionId: string) => void;
   onTableSelect?: (connectionId: string, tableName: string, schemaName: string) => void;
@@ -17,37 +12,42 @@ interface DatabaseSidebarProps {
 
 }
 
-// Definimos la interfaz para los métodos que expondremos
 export interface DatabaseSidebarRef {
   loadConnections: () => Promise<void>;
 }
 
-// Componente principal
+
 const DatabaseSidebar = forwardRef(({
   onConnectionSelect,
   onTableSelect,
   onAddConnection,
   onViewChange,
 }: DatabaseSidebarProps, ref: Ref<DatabaseSidebarRef>) => {
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    connectionId: string;
+    isVisible: boolean;
+  }>({
+    x: 0,
+    y: 0,
+    connectionId: '',
+    isVisible: false
+  });
 
-  const [sidebarState, setSidebarState] = useState<'normal' | 'collapsed' | 'expanded'>('normal');
-  // ========== ESTADOS DEL COMPONENTE ==========
+  const [sidebarState, setSidebarState] = useState<'normal' | 'collapsed' | 'expanded'>('expanded');
   const [connections, setConnections] = useState<DatabaseConnection[]>([]);
   const [, setSelectedConnection] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Estados para controlar dropdowns
   const [showSchemasDropdown, setShowSchemasDropdown] = useState<Set<string>>(new Set());
-  const [showTablesDropdown, setShowTablesDropdown] = useState<Set<string>>(new Set()); // CORREGIDO: renombrado para consistencia
+  const [showTablesDropdown, setShowTablesDropdown] = useState<Set<string>>(new Set()); 
 
-  // Estados para controlar la expansión de elementos (mantenemos para compatibilidad)
   const [expandedConnections, setExpandedConnections] = useState<Set<string>>(new Set());
 
-  // Datos cargados
   const [connectionSchemas, setConnectionSchemas] = useState<Record<string, Schema[]>>({});
   const [schemaTables, setSchemaTables] = useState<Record<string, Table[]>>({});
   const [schemaViews, setSchemaViews] = useState<Record<string, any[]>>({});
-  const [schemaPackages, setSchemaPackages] = useState<Record<string, any[]>>({});
   const [schemaProcedures, setSchemaProcedures] = useState<Record<string, any[]>>({});
   const [schemaFunctions, setSchemaFunctions] = useState<Record<string, any[]>>({});
   const [schemaTriggers, setSchemaTriggers] = useState<Record<string, any[]>>({});
@@ -59,7 +59,6 @@ const DatabaseSidebar = forwardRef(({
   const [loadingSchemas, setLoadingSchemas] = useState<Set<string>>(new Set());
   const [loadingTables, setLoadingTables] = useState<Set<string>>(new Set());
   const [loadingViews, setLoadingViews] = useState<Set<string>>(new Set());
-  const [loadingPackages, setLoadingPackages] = useState<Set<string>>(new Set());
   const [loadingProcedures, setLoadingProcedures] = useState<Set<string>>(new Set());
   const [loadingFunctions, setLoadingFunctions] = useState<Set<string>>(new Set());
   const [loadingTriggers, setLoadingTriggers] = useState<Set<string>>(new Set());
@@ -165,9 +164,7 @@ const DatabaseSidebar = forwardRef(({
       newDropdown.delete(schemaKey);
     } else {
       newDropdown.add(schemaKey);
-      // carga perezosa
       if (kind === 'views' && !schemaViews[schemaKey]) await loadViews(connectionId, schemaName);
-      if (kind === 'packages' && !schemaPackages[schemaKey]) await loadPackages(connectionId, schemaName);
       if (kind === 'procedures' && !schemaProcedures[schemaKey]) await loadProcedures(connectionId, schemaName);
       if (kind === 'functions' && !schemaFunctions[schemaKey]) await loadFunctions(connectionId, schemaName);
       if (kind === 'triggers' && !schemaTriggers[schemaKey]) await loadTriggers(connectionId, schemaName);
@@ -194,7 +191,6 @@ const DatabaseSidebar = forwardRef(({
     setState(newDropdown);
   };
 
-  // Función para expandir/contraer una conexión (mantenemos para compatibilidad)
   const toggleConnection = async (connectionId: string) => {
     const newExpanded = new Set(expandedConnections);
 
@@ -211,7 +207,7 @@ const DatabaseSidebar = forwardRef(({
     }
   };
 
-  // Función para seleccionar una conexión
+
   const selectConnection = async (connectionId: string) => {
     try {
       console.log('Intentando conectar a la base de datos:', connectionId);
@@ -240,7 +236,6 @@ const DatabaseSidebar = forwardRef(({
     }
   };
 
-  // Función para cargar esquemas de una conexión específica
   const loadSchemas = async (connectionId: string) => {
     try {
       setLoadingSchemas(prev => new Set(prev).add(connectionId));
@@ -272,7 +267,7 @@ const DatabaseSidebar = forwardRef(({
     }
   };
 
-  // Modifica la función loadTables para normalizar los nombres
+
   const loadTables = async (connectionId: string, schemaName: string) => {
     try {
       const schemaKey = `${connectionId}-${schemaName}`;
@@ -325,24 +320,6 @@ const DatabaseSidebar = forwardRef(({
     }
   };
 
-  const loadPackages = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
-    try {
-      setLoadingPackages(prev => new Set(prev).add(schemaKey));
-      const response = await apiService.getPackages(connectionId, schemaName);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          package_name: item.PACKAGE_NAME?.trim() || '',
-          schema_name: item.SCHEMA_NAME?.trim() || schemaName,
-          description: item.DESCRIPTION || item.description
-        }));
-        setSchemaPackages(prev => ({ ...prev, [schemaKey]: normalized }));
-      }
-    } finally {
-      setLoadingPackages(prev => { const s = new Set(prev); s.delete(schemaKey); return s; });
-    }
-  };
 
   const loadProcedures = async (connectionId: string, schemaName: string) => {
     const schemaKey = `${connectionId}-${schemaName}`;
@@ -629,6 +606,15 @@ const DatabaseSidebar = forwardRef(({
                   <div
                     className="connection-header"
                     onClick={() => toggleConnection(connection.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        connectionId: connection.id,
+                        isVisible: true
+                      });
+                    }}
                   >
                     <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}>
                       {isExpanded ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
@@ -642,69 +628,6 @@ const DatabaseSidebar = forwardRef(({
                   {/* Contenido expandible */}
                   {isExpanded && (
                     <div className="connection-content">
-
-                      {/* Detalles de la conexión */}
-                      <div className="connection-details">
-                        <div className="detail-item">
-                          <strong>Host:</strong> {connection.host}
-                        </div>
-                        <div className="detail-item">
-                          <strong>Base de datos:</strong> {connection.database}
-                        </div>
-                        {connection.lastConnected && (
-                          <div className="detail-item">
-                            <strong>Última conexión:</strong> {new Date(connection.lastConnected).toLocaleString()}
-                          </div>
-                        )}
-
-                        {/* Botones de acción */}
-                        <div className="connection-actions">
-                          {connection.isActive ? (
-                            <button
-                              className="disconnect-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                disconnectDatabase(connection.id);
-                              }}
-                            >
-                              Desconectar
-                            </button>
-                          ) : (
-                            <button
-                              className="connect-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                selectConnection(connection.id);
-                              }}
-                            >
-                              Conectar
-                            </button>
-                          )}
-
-                          <button
-                            className="delete-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(`¿Estás seguro de que quieres eliminar la conexión "${connection.name}"?`)) {
-                                deleteConnection(connection.id);
-                              }
-                            }}
-                          >
-                            Eliminar
-                          </button>
-                          <button
-                            className="query-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (onViewChange) onViewChange('query');
-                              if (onConnectionSelect) onConnectionSelect(connection.id);
-                            }}
-                          >
-                            Editor de Consultas
-                          </button>
-                        </div>
-                      </div>
-
                       {/* Sección de esquemas */}
                       <div className="schemas-section">
                         {/* Header clickeable para esquemas */}
@@ -1067,6 +990,63 @@ const DatabaseSidebar = forwardRef(({
         </div>
       </div>
 
+      {/* Menú contextual */}
+      {contextMenu.isVisible && (
+        <div
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            zIndex: 1000
+          }}
+        >
+          <div className="context-menu-item" onClick={() => {
+            selectConnection(contextMenu.connectionId);
+            setContextMenu({ ...contextMenu, isVisible: false });
+          }}>
+            Conectar
+          </div>
+          <div className="context-menu-item" onClick={() => {
+            disconnectDatabase(contextMenu.connectionId);
+            setContextMenu({ ...contextMenu, isVisible: false });
+          }}>
+            Desconectar
+          </div>
+          <div className="context-menu-item" onClick={() => {
+            if (onViewChange) onViewChange('query');
+            if (onConnectionSelect) onConnectionSelect(contextMenu.connectionId);
+            setContextMenu({ ...contextMenu, isVisible: false });
+          }}>
+            Editor de Consultas
+          </div>
+          <div className="context-menu-item" onClick={() => {
+            if (confirm(`¿Estás seguro de que quieres eliminar esta conexión?`)) {
+              deleteConnection(contextMenu.connectionId);
+            }
+            setContextMenu({ ...contextMenu, isVisible: false });
+          }}>
+            Eliminar
+          </div>
+        </div>
+      )}
+
+      {/* Cerrar menú contextual al hacer clic fuera */}
+      {contextMenu.isVisible && (
+        <div
+          className="context-menu-backdrop"
+          onClick={() => setContextMenu({ ...contextMenu, isVisible: false })}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)'
+          }}
+        />
+      )}
     </>
   );
 });
