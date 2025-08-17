@@ -3,7 +3,50 @@ const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuid } = require('uuid');
 
-type FirebirdConnection = { //practicamente un "objeto" con las propiedades de la conexion, luego se guardan en el archivo 
+//estructura de las columnas de firebird, lo uso unicamente la estructura al crear o modificar tablas desde el GUI
+//en las funciones de CreateTable Y generateCreateTableSQL ya que se forma un string para hacer el SQL de la cracion de tablas
+interface ColumnDefinition {
+    name: string;
+    type: string;
+    length?: number;
+    nullable: boolean;
+    defaultValue?: string;
+    primaryKey: boolean;
+    unique: boolean;
+}
+
+//estructura de la operacion que se va a hacer en una tabla, se usa para tener la estructura de la informacion 
+// que devuelve la base de datos al crear una tabla o modificrla
+interface TableOperationResponse {
+    success: boolean;
+    message?: string;
+    data?: any;
+    error?: {
+        message: string;
+        code?: string | number;
+        details?: any;
+    };
+    exists?: boolean;
+    sql?: string;
+    executionTime?: number;
+    rowsAffected?: number;
+    columns?: Array<{
+        name: string;
+        type: string;
+        maxLength?: number;
+        isNullable?: boolean;
+        isPrimaryKey?: boolean;
+        isForeignKey?: boolean;
+        defaultValue?: string;
+    }>;
+    table?: {
+        name: string;
+        schema?: string;
+        columns?: ColumnDefinition[];
+    };
+}
+
+type FirebirdConnection = { //struct con las propiedades de la conexion, luego se guardan en el archivo 
     id?: string;
     name: string;
     host: string;
@@ -25,7 +68,7 @@ type FirebirdConnection = { //practicamente un "objeto" con las propiedades de l
     dialect?: number;
 }
 
-type FirebirdConnectionResponse = {// tambien un objeto pero con las prpiedades de la respuesta de la conexion
+type FirebirdConnectionResponse = {// tambien un struct pero con las prpiedades de la respuesta de la conexion
     success: boolean;
     message: string;
     connectionId?: string;
@@ -53,25 +96,37 @@ interface connectionPool { //un objeto de la conexion activa a la abse de datos,
 }
 
 class databaseManager {
+
     // Arreglo de conexiones guardadas en el archivo
     private conexiones: connectionPool = {};
     // Ruta del archivo donde se guardan las conexiones
     private archivoConexiones: string;
 
+    //cuando se inicializa la clase se cargan todas las conexiones que el usuario a creado.
     constructor() {
         this.archivoConexiones = path.join(__dirname, '../data/connections.json');
         this.cargarConexiones();
     }
 
+
+    // cargamos las conexiones del archivo
     private async cargarConexiones(): Promise<void> {
         try {
+
+            //verificamos si no hay relajo con que se borro el archivo
             await this.asegurarDirectorioDatos();
+            //leemos el archivo
             const data = await fs.readFile(this.archivoConexiones, 'utf8');
+            //parseamos las conexion a yeison
             const conexionesGuardadas = JSON.parse(data);
 
+            //revisamos cada conexion guardada 
             for (const conexion of conexionesGuardadas) {
+                //revisamos si esa conexion tiene id
                 if (conexion.id) {
+                    //guardamos la contraseña obtenida en una variable
                     const passwordPlano = typeof conexion.password === 'string' ? conexion.password : '';
+                    //guardamos el resto de datos del pool
                     this.conexiones[conexion.id] = {
                         pool: null,
                         config: {
@@ -84,6 +139,7 @@ class databaseManager {
                     };
                 }
             }
+            //un avisito si el archivo esta vacio
         } catch (error) {
             console.log('No tienes conexiones xdddd.');
         }
@@ -117,26 +173,27 @@ class databaseManager {
         }
     }
 
-    // Crea la configuración de la conexion 
+    // Crea la configuración de la conexion que se usara en el form de conexion. 
     private crearConfiguracionFirebird(config: FirebirdConnection): any {
         return {
-            host: config.host,
-            database: '/firebird/data/' + config.database,
-            port: config.port || 3050,
-            user: config.username || 'SYSDBA',
-            password: config.password || 'masterkey',
-            lowercase_keys: config.options?.lowercase_keys ?? false,
-            role: config.options?.role,
-            pageSize: config.options?.pageSize || 4096,
-            retryConnectionInterval: config.options?.retryConnectionInterval || 1000,
-            blobAsText: config.options?.blobAsText ?? false,
-            encoding: config.options?.encoding || 'UTF-8'
+            host: config.host, //host de siempre
+            database: '/firebird/data/' + config.database, //ruta del archivo de la base de datos
+            port: config.port || 3050,  //puerto
+            user: config.username || 'SYSDBA', //usuario
+            password: config.password || 'masterkey', //contraseña
+            lowercase_keys: config.options?.lowercase_keys ?? false, //en caso de que en las opciones el nombre de las cosas se devuelvan en minusculas 
+            role: config.options?.role, //en caso de que haya roles de usuario especifico
+            pageSize: config.options?.pageSize || 4096, //tamaño de pagina
+            retryConnectionInterval: config.options?.retryConnectionInterval || 1000, //tiempo de intervalos de reconexion automatica
+            blobAsText: config.options?.blobAsText ?? false, //si los blob se devulevn como text o binario
+            encoding: config.options?.encoding || 'UTF-8' //el encoding
         };
     }
 
-
     async testConnection(config: FirebirdConnection): Promise<FirebirdConnectionResponse> {
         try {
+
+            //configuracion de la conexion que se le va a hacer (desde el formconexionc del frontend)
             const connectionConfig = {
                 host: config.host,
                 database: '/firebird/data/' + config.database,
@@ -145,13 +202,51 @@ class databaseManager {
                 password: config.password || 'masterkey'
             };
 
-            const result = await this.intentarConexion(connectionConfig);
-            return result;
+            return new Promise((resolve, reject) => {
+                //se usa attach de node-firebird ya que me es util al solo querer probar la conexion, directa y temporal
+                //la sintaxis es attach(config, callback)
+                Firebird.attach(connectionConfig, (err: any, db: any) => {
+                    if (err) {
+                        resolve({
+                            success: false,
+                            message: 'Error de conexion',
+                            error: { code: err.code, message: err.message }
+                        });
+                        return;
+                    }
+
+                    //se usa db.query del callback que dio el attach a la conexion,
+                    // ya que el callback o nos devuleve un error o la base de datos (por asi decirlo) (err, db)
+                    db.query('SELECT 1 as test FROM RDB$DATABASE', (err: any, result: any) => {
+                        //el query simplemente le pide una constante a la base de datos, si la devuelve funca, si no no.
+                        if (err) {
+                            db.detach();
+                            resolve({
+                                success: false,
+                                message: 'Error en el testeo',
+                                error: { message: err.message }
+                            });
+                            return;
+                        }
+
+                        try {
+                            db.detach();
+                        } catch (detachError) {
+                            console.error('Error al cerrar conexion:', detachError);
+                        }
+
+                        resolve({
+                            success: true,
+                            message: 'Conexión exitosa'
+                        });
+                    });
+                });
+            });
 
         } catch (error: any) {
             return {
                 success: false,
-                message: 'Error de conexión',
+                message: 'Error de conexion',
                 error: {
                     code: error.code,
                     message: error.message
@@ -161,55 +256,15 @@ class databaseManager {
     }
 
 
-    private async intentarConexion(firebirdConfig: any): Promise<FirebirdConnectionResponse> {
-        return new Promise((resolve, reject) => {
-
-            Firebird.attach(firebirdConfig, (err: any, db: any) => {
-                if (err) {
-                    console.error('Error al conectar:', err);
-                    reject(err);
-                    return;
-                }
-
-
-                db.query('SELECT 1 as test FROM RDB$DATABASE', (err: any, result: any) => {
-                    if (err) {
-                        db.detach();
-                        reject(err);
-                        return;
-                    }
-
-
-                    const serverInfo = {
-                        version: 'Firebird 3.0',
-                        dialect: 3,
-                        odsVersion: 'Unknown',
-                        engineVersion: 'Firebird 3.0'
-                    };
-
-                    try {
-                        db.detach();;
-                    } catch (detachError) {
-                        console.error('Error al cerrar conexion:', detachError);
-                    }
-
-                    resolve({
-                        success: true,
-                        message: 'Conexion exitosa',
-                        serverInfo
-                    });
-                });
-            });
-        });
-    }
-
     async addConection(config: FirebirdConnection): Promise<FirebirdConnectionResponse> {
         try {
             const test = await this.testConnection(config);
+            //si pasa la prueba del test es valida para agregarla como conexion
             if (!test.success) {
                 return test;
             }
 
+            //llenados todos los campos necesaios para el pool de conexion
             const connectionId = this.generateConnectionId();
             const newConfig = {
                 ...config,
@@ -225,24 +280,28 @@ class databaseManager {
                 isConnected: false
             };
 
+            //se guarda la conexion en el archivo
             await this.guardarConexiones();
             return {
                 success: true,
-                message: 'Conexion agregada exitosamente',
+                message: 'Conexion añadida exitosamente',
                 connectionId,
                 ...(test.serverInfo && { serverInfo: test.serverInfo })
             };
 
+
         } catch (error: any) {
             return {
                 success: false,
-                message: 'Error al agregar conexión',
+                message: 'Error al agregr conexin',
                 error: {
                     message: error.message
                 }
             };
         }
     }
+
+
 
     async connectToDatabase(connectionId: string): Promise<FirebirdConnectionResponse> {
         try {
@@ -266,18 +325,20 @@ class databaseManager {
                 };
             }
 
+            //si no esta conectada se procede a crear el pool de conexiones
             //se crea la configuracion de la conexion 
             const config = connection.config;
-            const firebirdConfig = this.crearConfiguracionFirebird(config); //se formatea a como el driver espera la conexion
+            const firebirdConfig = this.crearConfiguracionFirebird(config);
 
             //se crea el pool para la conexion 
             const pool = Firebird.pool(5, firebirdConfig);
 
-            //se intenta obtener la conexion del pool
+            //se intenta obtener la conexion del pool para ver si no se fallo en una configutracion
             return new Promise((resolve, reject) => {
+
                 pool.get((err: any, db: any) => {
                     if (err) {
-                        console.error('Error al obtener conexión del pool:', err);
+                        console.error('Error al obtener conexion del pool:', err);
                         pool.destroy();
                         resolve({
                             success: false,
@@ -309,6 +370,7 @@ class databaseManager {
 
                         db.detach();
 
+                        //si pasa la prueba del test es valida actualizar el estado de esa conexion
                         connection.pool = pool;
                         connection.isConnected = true;
                         connection.lastUsed = new Date();
@@ -316,8 +378,6 @@ class databaseManager {
                         connection.config.lastConnected = new Date();
 
                         this.guardarConexiones();
-
-                        console.log('Conexión configurada exitosamente');
 
                         resolve({
                             success: true,
@@ -342,8 +402,6 @@ class databaseManager {
     }
 
     async disconnectFromDatabase(connectionId: string): Promise<FirebirdConnectionResponse> {
-
-
         try {
 
             if (!this.conexiones[connectionId]) {
@@ -426,21 +484,34 @@ class databaseManager {
             })) as FirebirdConnection[];
     }
 
+    /*
+    Esta funcion es simple pero la mas importante, esta diseñada para ejecutar querys en la base de datos
+    un ejemplo de uso seria 
+    -await executeQuery("conn_123", "SELECT * FROM users");
+
+   - await executeQuery("conn_123", "SELECT * FROM users WHERE id = ?", [42]);
+
+   - await executeQuery("conn_123", "INSERT INTO users (name) VALUES (?)", ["efrain"]);
+    */
+
     async executeQuery(connectionId: string, query: string, parametrers?: any): Promise<any> {
         try {
+            
             if (!this.conexiones[connectionId]) {
                 throw new Error('conexion no encontrada');
             }
-
+            
             const connection = this.conexiones[connectionId];
 
             if (!connection.isConnected || !connection.pool) {
                 throw new Error('La conexion no esta activa');
             }
 
+
             connection.lastUsed = new Date();
 
             return new Promise((resolve, reject) => {
+                //agarramos el pool de la conexion de donde se hara la consulta
                 connection.pool.get((err: any, db: any) => {
                     if (err) {
                         resolve({
@@ -450,12 +521,18 @@ class databaseManager {
                         return;
                     }
 
+                
 
-                    const startTime = Date.now(); //con esto marco el inicio de la consulrta
+                //registraos el comienzo de la consultaa
+                    const startTime = Date.now(); 
 
+                //ejecutamos la consulta en la base de datos obtenida del pool
                     db.query(query, parametrers || [], (err: any, result: any) => {
+
+                        //registramos la duracion de la consulta
                         const executionTime = Date.now() - startTime;
 
+                        //si la consulta no es valisda
                         if (err) {
                             db.detach();
                             resolve({
@@ -465,12 +542,34 @@ class databaseManager {
                             return;
                         }
 
+                        /*
+                        esta parte se usa para procesar las columnas en caso de que sea un select
+                            Consulta SQL: "SELECT ID, NAME, ACTIVE FROM USERS"
+                                                    ↓
+                            la base de datos  devuelve: [
+                                { ID: 1, NAME: "Juan", ACTIVE: true },
+                                { ID: 2, NAME: "andre", ACTIVE: false }
+                            ]
+                                                    ↓
+                            result[0] = { ID: 1, NAME: "Juan", ACTIVE: true }
+                                                    ↓
+                            Object.keys(result[0]) = ["ID", "NAME", "ACTIVE"]
+                                                    ↓
+                            .map() procesa cada key:
+                                "ID" → { name: "ID", type: typeof 1 } → { name: "ID", type: "number" }
+                                "NAME" → { name: "NAME", type: typeof "Juan" } → { name: "NAME", type: "string" }
+                                "ACTIVE" → { name: "ACTIVE", type: typeof true } → { name: "ACTIVE", type: "boolean" }
+                                                    ↓
+                            columns = [
+                                { name: "ID", type: "number" },
+                                { name: "NAME", type: "string" },
+                                { name: "ACTIVE", type: "boolean" }
+                            ]
+                        */
                         let columns: { name: string; type: string }[] = [];
                         if (result && result.length > 0) {
-                            columns = Object.keys(result[0]).map(key => ({
-                                name: key,
-                                type: typeof result[0][key]
-                            }));
+                            columns = Object.keys(result[0]).map(key => ({name: key, type: typeof result[0][key]}));
+                            
                         }
 
                         db.detach();
@@ -575,26 +674,6 @@ class databaseManager {
         return result;
     }
 
-    async getPackages(connectionId: string, schemaName: string = ''): Promise<any> {
-        let query = `
-          SELECT 
-            TRIM(RDB$PACKAGE_NAME) AS PACKAGE_NAME,
-            TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
-            RDB$SQL_SECURITY AS SQL_SECURITY,
-            RDB$DESCRIPTION AS DESCRIPTION
-          FROM RDB$PACKAGES
-          WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
-        `;
-
-        if (schemaName) {
-            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
-        }
-
-        query += ` ORDER BY RDB$PACKAGE_NAME`;
-
-        return this.executeQuery(connectionId, query);
-    }
-
     async getProcedures(connectionId: string, schemaName: string = ''): Promise<any> {
         let query = `
           SELECT 
@@ -677,8 +756,7 @@ class databaseManager {
             TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
             TRIM(I.RDB$RELATION_NAME) AS RELATION_NAME,
             TRIM(COALESCE(R.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
-            I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
-            I.RDB$INACTIVE AS IS_INACTIVE
+            I.RDB$UNIQUE_FLAG AS IS_UNIQUE
           FROM RDB$INDICES I
           LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
           WHERE (I.RDB$SYSTEM_FLAG IS NULL OR I.RDB$SYSTEM_FLAG = 0)
@@ -773,7 +851,7 @@ class databaseManager {
         - RDB$RELATION_CONSTRAINTS + RDB$INDEX_SEGMENTS → Determinar si la columna es Primary Key o Foreign Key.
 */
 
-    
+
         const query = `
             SELECT 
                 TRIM(RF.RDB$FIELD_NAME) AS "name",
@@ -814,20 +892,20 @@ class databaseManager {
             ${schemaName && schemaName.trim() !== '' ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
             ORDER BY RF.RDB$FIELD_POSITION
         `;
-    
-        const params = schemaName && schemaName.trim() !== '' 
+
+        const params = schemaName && schemaName.trim() !== ''
             ? [tableName, schemaName]
             : [tableName];
-    
-    
+
+
         const result = await this.executeQuery(connectionId, query, params);
-    
+
         if (result.success && this.conexiones[connectionId]) {
             this.conexiones[connectionId].isConnected = true;
             this.conexiones[connectionId].config.isActive = true;
             this.conexiones[connectionId].lastUsed = new Date();
         }
-    
+
         return result;
     }
 
@@ -842,45 +920,160 @@ class databaseManager {
         }
     }
 
-    async checkConnectionsHealth(): Promise<void> {
-        // Comentado temporalmente para evitar errores 
-        console.log('Verificación de salud de conexiones deshabilitada temporalmente');
-        return;
+    async createTable(params: {
+        connectionId: string; schemaName: string; tableName: string; columns: ColumnDefinition[];
+    }): Promise<TableOperationResponse> {
+        try {
 
-        /*
-        for (const [id, connection] of Object.entries(this.conexiones)) {
-          if (connection.isConnected && connection.pool) {
-            try {
-              await new Promise((resolve, reject) => {
-                connection.pool.get((err: any, db: any) => {
-                  if (err) {
-                    reject(err);
-                    return;
-                  }
-                  db.query('SELECT 1 FROM RDB$DATABASE', (err: any) => {
-                    db.detach();
-                    if (err) {
-                      reject(err);
-                    } else {
-                      resolve(true);
-                    }
-                  });
-                });
-              });
-              connection.lastUsed = new Date();
-            } catch (error) {
-              console.log(`Conexión ${id} perdida, marcando como desconectada`);
-              connection.isConnected = false;
-              connection.config.isActive = false;
-              connection.pool = null;
+            const { connectionId, schemaName, tableName, columns } = params;
+
+            // si la conexión existe
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
             }
-          }
+
+            //si no coloco la tabla y nombre de columnas vacio o sin columnas
+            if (!tableName || !columns || columns.length === 0) {
+                return {
+                    success: false,
+                    message: 'Nombre de tabla y columnas son requeridos'
+                };
+            }
+
+            //miramos si la tabla existe usando con la funcion que hicimos abajo.
+            const existsResult = await this.checkTableExists(connectionId, schemaName, tableName);
+            if (existsResult.success && existsResult.exists) {
+                return {
+                    success: false,
+                    message: `La tabla ${tableName} ya existe en el esquema ${schemaName}`
+                };
+            }
+
+            // generamos el sql que no creara la tabla usando la funcion de abajo.
+            const sql = this.generateCreateTableSQL(schemaName, tableName, columns);
+
+            //usamos la funcion de ejecutar query que se usa tambien en el editor de consulta para crear la tabla con el string generado
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Tabla ${tableName} creada exitosamente`,
+                    data: { tableName, schemaName, columns }
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al crear la tabla'
+                };
+            }
+
+        } catch (error: any) {
+            console.error('Error en createTable:', error);
+            return {
+                success: false,
+                message: error.message || 'Error al crear la tabla'
+            };
         }
-        await this.guardarConexiones();
-        */
     }
 
-    // Eliminadas utilidades de cifrado y verificación de contraseñas por simplificación solicitada
+
+
+
+    private generateCreateTableSQL(schemaName: string, tableName: string, columns: ColumnDefinition[]): string {
+
+        const columnDefinitions = columns.map(col => {
+            let definition = `${col.name} ${col.type}`;
+
+            if (col.length && (col.type === 'VARCHAR' || col.type === 'CHAR')) {
+                definition += `(${col.length})`;
+            }
+
+            if (!col.nullable) {
+                definition += ' NOT NULL';
+            }
+
+            if (col.defaultValue !== undefined) {
+                definition += ` DEFAULT ${this.formatDefaultValue(col.defaultValue, col.type)}`;
+            }
+
+            if (col.unique) {
+                definition += ' UNIQUE';
+            }
+
+            return definition;
+        });
+
+        const primaryKeys = columns.filter(col => col.primaryKey).map(col => col.name);
+
+        let sql = `CREATE TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}" (\n`;
+        sql += `  ${columnDefinitions.join(',\n  ')}`;
+
+        // Agregar primary key si hay
+        if (primaryKeys.length) {
+            sql += `,\n  PRIMARY KEY (${primaryKeys.map(pk => `"${pk}"`).join(', ')})`;
+        }
+
+        sql += '\n);';
+
+        return sql;
+    }
+
+    private formatDefaultValue(value: string, type: string): string {
+        if (type.includes('CHAR') || type.includes('TEXT') ||
+            type.includes('DATE') || type.includes('TIME')) {
+            return `'${value.replace(/'/g, "''")}'`;
+        }
+        return value;
+    }
+
+    async checkTableExists(
+        connectionId: string,
+        schemaName: string,
+        tableName: string
+    ): Promise<{ success: boolean; exists: boolean; message?: string }> {
+        try {
+            const query = `
+      SELECT 1 
+      FROM RDB$RELATIONS 
+      WHERE RDB$RELATION_NAME = UPPER(?)
+      ${schemaName ? `AND RDB$OWNER_NAME = UPPER(?)` : ''}
+    `;
+
+            const params = schemaName ? [tableName, schemaName] : [tableName];
+            const result = await this.executeQuery(connectionId, query, params);
+
+            return {
+                success: true,
+                exists: result.success && result.data && result.data.length > 0
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                exists: false,
+                message: error.message
+            };
+        }
+    }
+
+    async getSupportedDataTypes(connectionId: string): Promise<any> {
+        // Tipos de datos básicos de Firebird
+        const firebirdDataTypes = [
+            'INTEGER', 'BIGINT', 'SMALLINT', 'FLOAT', 'DOUBLE PRECISION',
+            'CHAR', 'VARCHAR', 'BLOB', 'DATE', 'TIME', 'TIMESTAMP',
+            'BOOLEAN', 'DECIMAL', 'NUMERIC'
+        ];
+
+        return {
+            success: true,
+            data: firebirdDataTypes,
+            message: 'Tipos de datos obtenidos exitosamente'
+        };
+    }
+
 }
 
 module.exports = new databaseManager();

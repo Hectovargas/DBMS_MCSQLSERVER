@@ -825,3 +825,50 @@
 .schema-element > .tree-content::before {
   left: 16px;
 }
+
+.tree-item.schema > .tree-content {
+  padding-left: 16px;
+}
+
+.schema-category > .tree-content {
+  padding-left: 32px;
+}
+
+.schema-element > .tree-content {
+  padding-left: 48px;
+}
+
+/* Ajustar líneas del árbol para la nueva estructura */
+.tree-item.schema > .tree-content::before {
+  left: 8px;
+}
+
+.schema-category > .tree-content::before {
+  left: 24px;
+}
+
+.schema-element > .tree-content::before {
+  left: 40px;
+}
+
+/* Asegurar que todos los elementos tengan el mismo estilo de indentación */
+.table-item, .view-item, .procedure-item, 
+.function-item, .trigger-item, .index-item,
+.sequence-item, .user-item {
+  padding-left: 48px;
+  position: relative;
+}
+
+.table-item::before, .view-item::before, 
+.procedure-item::before, .function-item::before,
+.trigger-item::before, .index-item::before,
+.sequence-item::before, .user-item::before {
+  content: "";
+  position: absolute;
+  left: 32px;
+  top: 12px;
+  width: 12px;
+  height: 1px;
+  background-color: var(--border-color);
+  opacity: 0.5;
+}
