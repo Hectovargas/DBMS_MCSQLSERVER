@@ -1,0 +1,185 @@
+/* ========== ESTILOS PARA EL VISOR DE DDL DE OBJETOS ========== */
+
+.object-ddl-viewer {
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  margin: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ========== ENCABEZADO DEL OBJETO ========== */
+.object-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.object-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.schema-name {
+  background-color: var(--accent-color);
+  color: var(--text-on-accent);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* ========== MENSAJE CUANDO NO HAY OBJETO SELECCIONADO ========== */
+.no-object-selected {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+.no-object-selected p {
+  font-size: 1.1rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.warning-icon {
+  width: 24px;
+  height: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'%3E%3Cpath d='M12 2L1 21h22L12 2zm0 3.17L19.83 19H4.17L12 5.17zM11 16h2v2h-2zm0-6h2v4h-2z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* ========== INDICADOR DE CARGA ========== */
+.loading-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.loading-message p {
+  font-size: 1.1rem;
+  margin: 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ========== MENSAJE DE ERROR ========== */
+.error-message {
+  background-color: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 6px;
+  padding: 15px;
+  margin: 20px 0;
+  color: var(--error-text);
+}
+
+.error-message p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+}
+
+.error-icon {
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23dc2626'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* ========== CONTENIDO DEL DDL ========== */
+.ddl-content {
+  background-color: var(--bg-primary);
+  border-radius: 6px;
+  padding: 20px;
+  border: 1px solid var(--border-color);
+}
+
+.ddl-header {
+  margin-bottom: 20px;
+}
+
+.ddl-header h4 {
+  margin: 0 0 10px 0;
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.ddl-header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* ========== SUGERENCIA DE DDL ========== */
+.ddl-suggestion {
+  background-color: var(--bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.ddl-suggestion .ddl-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  margin: 0;
+}
+
+.ddl-suggestion .ddl-header span {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+/* ========== BOTÓN DE COPIAR ========== */
+.copy-btn {
+  background-color: var(--accent-color);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.copy-btn:hover {
+  background-color: var(--accent-hover);
+}
+
+.copy-btn:active {
+  transform: translateY(1px);
+}
+
+/* ========== EDITOR DE CÓDIGO ========== */
+.ddl-code {
+  background-color: var(--bg-primary) ;
+  color: var(--text-primary) ;
+  border: none ;
+  outline: none ;
+  resize: none ;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px ;
+  line-height: 1.5 ;
+}

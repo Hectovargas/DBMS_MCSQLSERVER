@@ -4,7 +4,7 @@ import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-sql';
 import 'prismjs/themes/prism-tomorrow.css';
 // Importamos React y los hooks necesarios para el componente
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // Importamos el servicio para ejecutar consultas SQL
 import apiService from '../services/apiService';
 // Importamos el tipo TypeScript para los resultados de consultas
@@ -17,14 +17,15 @@ import './QueryEditor.css';
 interface QueryEditorProps {
   connectionId: string | null; // ID de la conexión activa (puede ser null si no hay conexión)
   onQueryExecuted?: (result: QueryResult) => void; // Callback opcional cuando se ejecuta una consulta
+  initialQuery?: string; // Query inicial para cargar en el editor
 }
 
 // ========== COMPONENTE PRINCIPAL ==========
-const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, onQueryExecuted }) => {
+const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, onQueryExecuted, initialQuery = '' }) => {
   // ========== ESTADOS DEL EDITOR ==========
   
   // Estado para almacenar la consulta SQL que escribe el usuario
-  const [query, setQuery] = useState<string>('');
+  const [query, setQuery] = useState<string>(initialQuery);
   
   // Estado para almacenar el resultado de la consulta ejecutada
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -37,6 +38,15 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, onQueryExecuted
   
   // Estado para almacenar el tiempo de ejecución de la consulta
   const [executionTime, setExecutionTime] = useState<number>(0);
+
+  // ========== EFECTOS ==========
+  
+  // Efecto para actualizar la query cuando cambia initialQuery
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
 
   // ========== FUNCIONES MANEJADORAS ==========
   

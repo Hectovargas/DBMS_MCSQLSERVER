@@ -46,6 +46,8 @@ interface TableOperationResponse {
     };
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------------
+
 type FirebirdConnection = { //struct con las propiedades de la conexion, luego se guardan en el archivo 
     id?: string;
     name: string;
@@ -68,6 +70,8 @@ type FirebirdConnection = { //struct con las propiedades de la conexion, luego s
     dialect?: number;
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------------
+
 type FirebirdConnectionResponse = {// tambien un struct pero con las prpiedades de la respuesta de la conexion
     success: boolean;
     message: string;
@@ -86,6 +90,8 @@ type FirebirdConnectionResponse = {// tambien un struct pero con las prpiedades 
     };
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------------
+
 interface connectionPool { //un objeto de la conexion activa a la abse de datos, cada cosa del sidebar es una de estos pools
     [connectionId: string]: {
         pool: any;
@@ -94,6 +100,8 @@ interface connectionPool { //un objeto de la conexion activa a la abse de datos,
         isConnected: boolean;
     }
 }
+
+//--------------------------------------------------------------------------------------------------------------------------------------
 
 class databaseManager {
 
@@ -108,6 +116,7 @@ class databaseManager {
         this.cargarConexiones();
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     // cargamos las conexiones del archivo
     private async cargarConexiones(): Promise<void> {
@@ -145,6 +154,7 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     private async guardarConexiones(): Promise<void> {
         try {
@@ -164,6 +174,8 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     private async asegurarDirectorioDatos(): Promise<void> {
         const dataDir = path.dirname(this.archivoConexiones);
         try {
@@ -172,6 +184,8 @@ class databaseManager {
             await fs.mkdir(dataDir, { recursive: true });
         }
     }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     // Crea la configuración de la conexion que se usara en el form de conexion. 
     private crearConfiguracionFirebird(config: FirebirdConnection): any {
@@ -189,6 +203,8 @@ class databaseManager {
             encoding: config.options?.encoding || 'UTF-8' //el encoding
         };
     }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     async testConnection(config: FirebirdConnection): Promise<FirebirdConnectionResponse> {
         try {
@@ -255,6 +271,7 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     async addConection(config: FirebirdConnection): Promise<FirebirdConnectionResponse> {
         try {
@@ -301,6 +318,7 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
 
     async connectToDatabase(connectionId: string): Promise<FirebirdConnectionResponse> {
@@ -401,6 +419,8 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async disconnectFromDatabase(connectionId: string): Promise<FirebirdConnectionResponse> {
         try {
 
@@ -438,6 +458,8 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async removeConnection(connectionId: string): Promise<FirebirdConnectionResponse> {
         try {
             if (this.conexiones[connectionId]) {
@@ -466,6 +488,8 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     getAllConnections(): FirebirdConnection[] {
         return Object.values(this.conexiones).map(conn => ({
             ...conn.config,
@@ -473,6 +497,8 @@ class databaseManager {
             lastConnected: conn.lastUsed
         })) as FirebirdConnection[];
     }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     getActiveConnections(): FirebirdConnection[] {
         return Object.values(this.conexiones)
@@ -484,6 +510,8 @@ class databaseManager {
             })) as FirebirdConnection[];
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     /*
     Esta funcion es simple pero la mas importante, esta diseñada para ejecutar querys en la base de datos
     un ejemplo de uso seria 
@@ -494,13 +522,14 @@ class databaseManager {
    - await executeQuery("conn_123", "INSERT INTO users (name) VALUES (?)", ["efrain"]);
     */
 
+
     async executeQuery(connectionId: string, query: string, parametrers?: any): Promise<any> {
         try {
-            
+
             if (!this.conexiones[connectionId]) {
                 throw new Error('conexion no encontrada');
             }
-            
+
             const connection = this.conexiones[connectionId];
 
             if (!connection.isConnected || !connection.pool) {
@@ -521,12 +550,17 @@ class databaseManager {
                         return;
                     }
 
-                
+                    // Configurar para que los BLOB se devuelvan como texto
+                    db.query('SET BLOB_DISPLAY_DEFAULT = TEXT', (err: any) => {
+                        if (err) {
+                            console.log('Warning: No se pudo configurar BLOB_DISPLAY_DEFAULT:', err.message);
+                        }
+                    });
 
-                //registraos el comienzo de la consultaa
-                    const startTime = Date.now(); 
+                    //registraos el comienzo de la consultaa
+                    const startTime = Date.now();
 
-                //ejecutamos la consulta en la base de datos obtenida del pool
+                    //ejecutamos la consulta en la base de datos obtenida del pool
                     db.query(query, parametrers || [], (err: any, result: any) => {
 
                         //registramos la duracion de la consulta
@@ -568,8 +602,8 @@ class databaseManager {
                         */
                         let columns: { name: string; type: string }[] = [];
                         if (result && result.length > 0) {
-                            columns = Object.keys(result[0]).map(key => ({name: key, type: typeof result[0][key]}));
-                            
+                            columns = Object.keys(result[0]).map(key => ({ name: key, type: typeof result[0][key] }));
+
                         }
 
                         db.detach();
@@ -597,6 +631,8 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async getSchemas(connectionId: string): Promise<any> {
         const query = `
           SELECT DISTINCT 
@@ -617,6 +653,8 @@ class databaseManager {
 
         return result;
     }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     async getTables(connectionId: string, schemaName: string = ''): Promise<any> {
         let query = `
@@ -646,6 +684,8 @@ class databaseManager {
         return result;
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async getViews(connectionId: string, schemaName: string = ''): Promise<any> {
         let query = `
           SELECT 
@@ -674,6 +714,8 @@ class databaseManager {
         return result;
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async getProcedures(connectionId: string, schemaName: string = ''): Promise<any> {
         let query = `
           SELECT 
@@ -692,6 +734,8 @@ class databaseManager {
 
         return this.executeQuery(connectionId, query);
     }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     async getFunctions(connectionId: string, schemaName: string = ''): Promise<any> {
         let query = `
@@ -712,6 +756,8 @@ class databaseManager {
         return this.executeQuery(connectionId, query);
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async getSequences(connectionId: string): Promise<any> {
         const query = `
           SELECT 
@@ -725,6 +771,8 @@ class databaseManager {
 
         return this.executeQuery(connectionId, query);
     }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     async getTriggers(connectionId: string, schemaName: string = ''): Promise<any> {
         let query = `
@@ -750,6 +798,8 @@ class databaseManager {
         return this.executeQuery(connectionId, query);
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async getIndexes(connectionId: string, schemaName: string = ''): Promise<any> {
         let query = `
           SELECT 
@@ -772,6 +822,8 @@ class databaseManager {
         return this.executeQuery(connectionId, query);
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async getUsers(connectionId: string): Promise<any> {
         const query = `
           SELECT 
@@ -786,6 +838,8 @@ class databaseManager {
         return this.executeQuery(connectionId, query);
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async getTablespaces(connectionId: string): Promise<any> {
         return {
             success: true,
@@ -794,124 +848,85 @@ class databaseManager {
         };
     }
 
-    async getTablesColumns(
-        connectionId: string,
-        tableName: string,
-        schemaName: string = ''
-    ): Promise<any> {
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
-        /*
-    System Tables usadas en Firebird para obtener metadata de columnas:
-
-    1. RDB$RELATION_FIELDS ( RF)
-       - Contiene la lista de campos que pertenecen a cada tabla o vista.
-       - Campos clave:
-            RDB$RELATION_NAME → Nombre de la tabla/vista.
-            RDB$FIELD_NAME    → Nombre de la columna.
-            RDB$FIELD_SOURCE  → Nombre del dominio o definición interna del tipo de dato.
-            RDB$FIELD_POSITION→ Posición de la columna (orden).
-            RDB$NULL_FLAG     → Si es 1 = NOT NULL, si es NULL = permite nulos.
-            RDB$DEFAULT_SOURCE→ Valor por defecto en SQL.
-            RDB$DESCRIPTION   → Comentario/nota asociada a la columna.
-
-    2. RDB$FIELDS (alias F)
-       - Define los dominios internos o tipos de datos reales.
-       - Campos clave:
-            RDB$FIELD_NAME     → Nombre interno del dominio/tipo.
-            RDB$FIELD_TYPE     → Código numérico del tipo (ej. 37 = VARCHAR).
-            RDB$FIELD_SUB_TYPE → Subtipo (para BLOBs, NUMERIC, etc.).
-            RDB$FIELD_LENGTH   → Longitud en bytes.
-            RDB$FIELD_PRECISION→ Precisión para tipos numéricos.
-            RDB$FIELD_SCALE    → Escala (decimales) para numéricos.
-            RDB$COMPUTED_SOURCE→ Expresión SQL si es un campo calculado.
-
-    3. RDB$RELATIONS (alias R)
-       - Lista todas las tablas, vistas y sus metadatos.
-       - Campos clave:
-            RDB$RELATION_NAME → Nombre de la tabla/vista.
-            RDB$OWNER_NAME    → Usuario/rol dueño de la tabla.
-
-    4. RDB$RELATION_CONSTRAINTS (alias RC)
-       - Lista de restricciones a nivel de tabla (PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK).
-       - Campos clave:
-            RDB$RELATION_NAME → Tabla a la que pertenece la restricción.
-            RDB$INDEX_NAME    → Índice asociado a la restricción.
-            RDB$CONSTRAINT_TYPE → Tipo de restricción ('PRIMARY KEY', 'FOREIGN KEY', etc.).
-
-    5. RDB$INDEX_SEGMENTS (alias S)
-       - Lista de columnas que componen cada índice.
-       - Campos clave:
-            RDB$INDEX_NAME → Índice al que pertenece la columna.
-            RDB$FIELD_NAME → Nombre de la columna dentro del índice.
-
-    Resumen de uso en la función:
-        - RDB$RELATION_FIELDS → Punto de partida, lista las columnas de la tabla.
-        - RDB$FIELDS → Obtenemos el tipo real, longitud, precisión y escala.
-        - RDB$RELATIONS → Usado para filtrar por tabla y esquema (owner).
-        - RDB$RELATION_CONSTRAINTS + RDB$INDEX_SEGMENTS → Determinar si la columna es Primary Key o Foreign Key.
-*/
-
-
-        const query = `
-            SELECT 
-                TRIM(RF.RDB$FIELD_NAME) AS "name",
-                F.RDB$FIELD_TYPE AS "dataType",
-                TRIM(F.RDB$FIELD_SUB_TYPE) AS "subType",
-                F.RDB$FIELD_LENGTH AS "maxLength",
-                F.RDB$FIELD_PRECISION AS "precision",
-                F.RDB$FIELD_SCALE AS "scale",
+    async getTablesColumns(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+        const query =
+            `SELECT 
+            --agarro los datos principales de la columna
+                TRIM(RF.RDB$FIELD_NAME) AS "name",                  
+                F.RDB$FIELD_TYPE AS "dataType",                     -- Codigo numerico del tipo de dato (8=INTEGER 37=VARCHAR etc)
+                F.RDB$FIELD_LENGTH AS "maxLength",                  
+                F.RDB$FIELD_PRECISION AS "precision",               
+                F.RDB$FIELD_SCALE AS "scale",                       
                 CASE WHEN RF.RDB$NULL_FLAG = 1 THEN 0 ELSE 1 END AS "isNullable",
-                TRIM(RF.RDB$DEFAULT_SOURCE) AS "defaultValue",
-                TRIM(RF.RDB$DESCRIPTION) AS "description",
-                CASE WHEN CPK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isPrimaryKey",
-                CASE WHEN CFK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isForeignKey"
-            FROM RDB$RELATION_FIELDS RF
-            INNER JOIN RDB$RELATIONS R 
-                ON RF.RDB$RELATION_NAME = R.RDB$RELATION_NAME
-            INNER JOIN RDB$FIELDS F 
-                ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME
-            -- Primary Keys
+    
+                CASE                                                        --Manejo el valor por defecto de esta manera porque firebird guarda los defaultValues como blob 
+                    WHEN RF.RDB$DEFAULT_SOURCE IS NULL THEN NULL            -- Si no hay valor por defecto devolver NULL
+                    WHEN CHAR_LENGTH(RF.RDB$DEFAULT_SOURCE) = 0 THEN NULL   -- Si el BLOB está vacío, devolver NULL
+                    ELSE CAST(SUBSTRING(RF.RDB$DEFAULT_SOURCE FROM 9) AS VARCHAR(8000))      -- Convertir BLOB a texto 
+                END AS "defaultValue",                                      
+    
+                CASE WHEN CPK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isPrimaryKey", -- Si es clave primaria (1=TRUE, 0=FALSE)
+                CASE WHEN CFK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isForeignKey"  -- Si es clave foránea (1=TRUE, 0=FALSE)
+    
+            -- JOINS PRINCIPALES
+            FROM RDB$RELATION_FIELDS RF                             --me sirve para traer info especifica de ese campo
+            INNER JOIN RDB$RELATIONS R                              --la utilizo unicamente para saber cual es la tabla padre de esa columna
+                ON RF.RDB$RELATION_NAME = R.RDB$RELATION_NAME       --Toda columna debe de tener obligatoriamente una tabla por eso el inner join
+            INNER JOIN RDB$FIELDS F                                 -- solo la utilizo para ver que tipo de dato era cada cosa
+                ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME           --obligatoriamente un campo debe de tener un tipo de dato asi que tambien era innerjoin
+    
+            -- SUBCONSULTA PARA PRIMARY KEYS
+            LEFT JOIN (                                             -- utilice left join porque no todos los campos son pk entonces ocupada hacer la resta
+                SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME       -- agarro solamente el nombre del campo y la tabla
+                FROM RDB$RELATION_CONSTRAINTS RC                    -- agarro la tabla de la tabla de restricciones para ver si existe ahi
+                INNER JOIN RDB$INDEX_SEGMENTS S                     -- AQUI HAY ALGO MUY IMPORTANTE, utilice inner join poque los campos constraint
+                    ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME         -- tienen OBLIGATORIAMENTE UN INDICE, asi que mediante ese indice puedo identificar
+                                                                    -- quien es la llave primaria que esta en constraint y index_segments
+                WHERE RC.RDB$CONSTRAINT_TYPE = 'PRIMARY KEY'        -- Filtro solo restricciones de tipo pk
+            ) CPK ON CPK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME         -- aqui ya identifico quien es la pk
+                AND CPK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME    -- Y verifico que sea de la misma tabla
+    
+            -- SUBCONSULTA PARA FOREIGN KEYS
             LEFT JOIN (
-                SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME
-                FROM RDB$RELATION_CONSTRAINTS RC
-                INNER JOIN RDB$INDEX_SEGMENTS S 
-                    ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME
-                WHERE RC.RDB$CONSTRAINT_TYPE = 'PRIMARY KEY'
-            ) CPK ON CPK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME
-                AND CPK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME
-            -- Foreign Keys
-            LEFT JOIN (
-                SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME
-                FROM RDB$RELATION_CONSTRAINTS RC
-                INNER JOIN RDB$INDEX_SEGMENTS S 
-                    ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME
-                WHERE RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'
-            ) CFK ON CFK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME
-                AND CFK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME
-            WHERE RF.RDB$RELATION_NAME = UPPER(?)
-            ${schemaName && schemaName.trim() !== '' ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
-            ORDER BY RF.RDB$FIELD_POSITION
+                SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME       
+                FROM RDB$RELATION_CONSTRAINTS RC                    
+                INNER JOIN RDB$INDEX_SEGMENTS S                     
+                    ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME         
+                WHERE RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'        
+            ) CFK ON CFK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME         
+                AND CFK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME    
+    
+            -- FILTROS: Especifico qué tabla quiero consultar    
+            WHERE RF.RDB$RELATION_NAME = UPPER(?)                  
+            ${schemaName && schemaName.trim() !== '' ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''} 
+            ORDER BY RF.RDB$FIELD_POSITION                          
         `;
-
+    
+        //Armo el array de parámetros según si incluyo esquema o no
         const params = schemaName && schemaName.trim() !== ''
-            ? [tableName, schemaName]
-            : [tableName];
-
-
+            ? [tableName, schemaName]                               
+            : [tableName];                                          
+    
+        //Ejecuto la consulta usando la función executeQuery
         const result = await this.executeQuery(connectionId, query, params);
-
+    
+        //Si la consulta fue exitosa, marco la conexión como activa
         if (result.success && this.conexiones[connectionId]) {
-            this.conexiones[connectionId].isConnected = true;
-            this.conexiones[connectionId].config.isActive = true;
-            this.conexiones[connectionId].lastUsed = new Date();
+            this.conexiones[connectionId].isConnected = true;       
+            this.conexiones[connectionId].config.isActive = true;  
+            this.conexiones[connectionId].lastUsed = new Date();   
         }
-
-        return result;
+    
+        return result; 
     }
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     private generateConnectionId(): string {
         return `connection_${uuid()}`;
     }
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     async closeAllconection(): Promise<void> {
         const idsConexiones = Object.keys(this.conexiones);
@@ -919,7 +934,7 @@ class databaseManager {
             await this.disconnectFromDatabase(connectionId);
         }
     }
-
+    //--------------------------------------------------------------------------------------------------------------------------------------
     async createTable(params: {
         connectionId: string; schemaName: string; tableName: string; columns: ColumnDefinition[];
     }): Promise<TableOperationResponse> {
@@ -979,16 +994,14 @@ class databaseManager {
             };
         }
     }
-
-
-
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     private generateCreateTableSQL(schemaName: string, tableName: string, columns: ColumnDefinition[]): string {
 
         const columnDefinitions = columns.map(col => {
-            let definition = `${col.name} ${col.type}`;
+            let definition = `"${col.name}" ${col.type}`;
 
-            if (col.length && (col.type === 'VARCHAR' || col.type === 'CHAR')) {
+            if (col.length && (col.type === 'VARCHAR' || col.type === 'CHAR' || col.type === 'DECIMAL' || col.type === 'NUMERIC')) {
                 definition += `(${col.length})`;
             }
 
@@ -996,8 +1009,11 @@ class databaseManager {
                 definition += ' NOT NULL';
             }
 
-            if (col.defaultValue !== undefined) {
-                definition += ` DEFAULT ${this.formatDefaultValue(col.defaultValue, col.type)}`;
+            if (col.defaultValue !== undefined && col.defaultValue.trim() !== '') {
+                const defaultValue = this.formatDefaultValue(col.defaultValue, col.type);
+                if (defaultValue !== '') {
+                    definition += ` DEFAULT ${defaultValue}`;
+                }
             }
 
             if (col.unique) {
@@ -1009,11 +1025,15 @@ class databaseManager {
 
         const primaryKeys = columns.filter(col => col.primaryKey).map(col => col.name);
 
-        let sql = `CREATE TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}" (\n`;
+        let sql = `CREATE TABLE `;
+        if (schemaName && schemaName.trim() !== '') {
+            sql += `"${schemaName}".`;
+        }
+        sql += `"${tableName}" (\n`;
         sql += `  ${columnDefinitions.join(',\n  ')}`;
 
         // Agregar primary key si hay
-        if (primaryKeys.length) {
+        if (primaryKeys.length > 0) {
             sql += `,\n  PRIMARY KEY (${primaryKeys.map(pk => `"${pk}"`).join(', ')})`;
         }
 
@@ -1022,13 +1042,46 @@ class databaseManager {
         return sql;
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     private formatDefaultValue(value: string, type: string): string {
+        // Si el valor está vacío o es undefined, no agregar DEFAULT
+        if (!value || value.trim() === '') {
+            return '';
+        }
+
+        // Para tipos de texto, fecha y tiempo, agregar comillas
         if (type.includes('CHAR') || type.includes('TEXT') ||
-            type.includes('DATE') || type.includes('TIME')) {
+            type.includes('DATE') || type.includes('TIME') ||
+            type.includes('BLOB') || type.includes('CLOB')) {
             return `'${value.replace(/'/g, "''")}'`;
         }
-        return value;
+
+        // Para tipos numéricos, verificar que sea un número válido
+        if (type.includes('INT') || type.includes('DECIMAL') || 
+            type.includes('NUMERIC') || type.includes('FLOAT') || 
+            type.includes('DOUBLE')) {
+            const numValue = parseFloat(value);
+            if (isNaN(numValue)) {
+                return `'${value}'`; // Si no es número, tratarlo como string
+            }
+            return value;
+        }
+
+        // Para booleanos
+        if (type.includes('BOOLEAN')) {
+            const boolValue = value.toLowerCase();
+            if (boolValue === 'true' || boolValue === 'false') {
+                return boolValue;
+            }
+            return `'${value}'`;
+        }
+
+        // Para otros tipos, agregar comillas por seguridad
+        return `'${value.replace(/'/g, "''")}'`;
     }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
 
     async checkTableExists(
         connectionId: string,
@@ -1036,12 +1089,9 @@ class databaseManager {
         tableName: string
     ): Promise<{ success: boolean; exists: boolean; message?: string }> {
         try {
-            const query = `
-      SELECT 1 
+            const query = `SELECT 1 
       FROM RDB$RELATIONS 
-      WHERE RDB$RELATION_NAME = UPPER(?)
-      ${schemaName ? `AND RDB$OWNER_NAME = UPPER(?)` : ''}
-    `;
+      WHERE RDB$RELATION_NAME = UPPER(?) ${schemaName ? `AND RDB$OWNER_NAME = UPPER(?)` : ''}`;
 
             const params = schemaName ? [tableName, schemaName] : [tableName];
             const result = await this.executeQuery(connectionId, query, params);
@@ -1059,8 +1109,150 @@ class databaseManager {
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async createView(params: {
+        connectionId: string;
+        schemaName: string;
+        viewName: string;
+        selectQuery: string;
+        columnNames?: string[];
+        withCheckOption?: boolean;
+    }): Promise<TableOperationResponse> {
+        try {
+            const {
+                connectionId,
+                schemaName,
+                viewName,
+                selectQuery,
+                columnNames,
+                withCheckOption = false
+            } = params;
+
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            if (!viewName || !selectQuery) {
+                return {
+                    success: false,
+                    message: 'Nombre de vista y consulta SELECT son requeridos'
+                };
+            }
+
+            const existsResult = await this.checkViewExists(connectionId, schemaName, viewName);
+            if (existsResult.success && existsResult.exists) {
+                return {
+                    success: false,
+                    message: `La vista ${viewName} ya existe en el esquema ${schemaName}`
+                };
+            }
+
+            const sql = this.generateCreateViewSQL(
+                schemaName,
+                viewName,
+                selectQuery,
+                columnNames,
+                withCheckOption
+            );
+
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Vista ${viewName} creada exitosamente`,
+                    data: {
+                        viewName,
+                        schemaName,
+                        selectQuery,
+                        columnNames,
+                        withCheckOption
+                    }
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al crear la vista'
+                };
+            }
+
+        } catch (error: any) {
+            console.error('Error en createView:', error);
+            return {
+                success: false,
+                message: error.message || 'Error al crear la vista'
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+    private generateCreateViewSQL(
+        schemaName: string,
+        viewName: string,
+        selectQuery: string,
+        columnNames?: string[],
+        withCheckOption: boolean = false
+    ): string {
+
+        const cleanedSelectQuery = selectQuery.trim();
+        if (!cleanedSelectQuery.toUpperCase().startsWith('SELECT')) {
+            throw new Error('La consulta debe comenzar con SELECT');
+        }
+
+        let sql = `CREATE VIEW ${schemaName ? `${schemaName}.` : ''}"${viewName}"`;
+
+        if (columnNames && columnNames.length > 0) {
+            sql += ` (${columnNames.map(name => `"${name}"`).join(', ')})`;
+        }
+
+        sql += ` AS\n${cleanedSelectQuery}`;
+
+        if (withCheckOption) {
+            sql += `\nWITH CHECK OPTION`;
+        }
+
+        return sql;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async checkViewExists(
+        connectionId: string,
+        schemaName: string,
+        viewName: string
+    ): Promise<{ success: boolean; exists: boolean; message?: string }> {
+        try {
+            const query = `
+            SELECT 1 
+            FROM RDB$RELATIONS 
+            WHERE RDB$RELATION_NAME = UPPER(?)
+            AND RDB$VIEW_BLR IS NOT NULL
+            ${schemaName ? `AND RDB$OWNER_NAME = UPPER(?)` : ''}
+        `;
+
+            const params = schemaName ? [viewName, schemaName] : [viewName];
+            const result = await this.executeQuery(connectionId, query, params);
+
+            return {
+                success: true,
+                exists: result.success && result.data && result.data.length > 0
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                exists: false,
+                message: error.message
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
     async getSupportedDataTypes(connectionId: string): Promise<any> {
-        // Tipos de datos básicos de Firebird
         const firebirdDataTypes = [
             'INTEGER', 'BIGINT', 'SMALLINT', 'FLOAT', 'DOUBLE PRECISION',
             'CHAR', 'VARCHAR', 'BLOB', 'DATE', 'TIME', 'TIMESTAMP',
@@ -1074,6 +1266,1206 @@ class databaseManager {
         };
     }
 
+    //--------------------------------------------------------------------------------------------------------------------------------------
+    // FUNCIONES PARA GENERAR DDL DE OBJETOS
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async generateTableDDL(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            // Obtener columnas de la tabla
+            const columnsResult = await this.getTablesColumns(connectionId, tableName, schemaName);
+            if (!columnsResult.success) {
+                return columnsResult;
+            }
+
+            // Obtener índices de la tabla
+            const indexesResult = await this.getTableIndexes(connectionId, tableName, schemaName);
+            const indexes = indexesResult.success ? indexesResult.data : [];
+
+            // Obtener constraints de la tabla
+            const constraintsResult = await this.getTableConstraints(connectionId, tableName, schemaName);
+            const constraints = constraintsResult.success ? constraintsResult.data : [];
+
+            // Generar DDL
+            const ddl = this.buildTableDDL(tableName, schemaName, columnsResult.data, indexes, constraints);
+
+            return {
+                success: true,
+                data: ddl,
+                message: 'DDL de tabla generado exitosamente'
+            };
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al generar DDL de tabla',
+                error: { message: error.message }
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async generateFunctionDDL(connectionId: string, functionName: string, schemaName: string = ''): Promise<any> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            console.log('generateFunctionDDL called with:', { connectionId, functionName, schemaName });
+
+            // Consulta simple y directa
+            const query = `
+                SELECT 
+                    TRIM(R.RDB$FUNCTION_NAME) AS FUNCTION_NAME,
+                    TRIM(R.RDB$OWNER_NAME) AS OWNER_NAME,
+                    R.RDB$FUNCTION_TYPE AS FUNCTION_TYPE,
+                    R.RDB$QUERY_NAME AS QUERY_NAME,
+                    R.RDB$DESCRIPTION AS DESCRIPTION,
+                    R.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
+                    CAST(R.RDB$FUNCTION_SOURCE AS VARCHAR(8000)) AS FUNCTION_SOURCE,
+                    R.RDB$MODULE_NAME AS MODULE_NAME,
+                    R.RDB$ENTRYPOINT AS ENTRYPOINT,
+                    R.RDB$RETURN_ARGUMENT AS RETURN_ARGUMENT
+                FROM RDB$FUNCTIONS R
+                WHERE R.RDB$FUNCTION_NAME = ?
+            `;
+
+            const params = [functionName];
+            console.log('Function DDL query:', query);
+            console.log('Function DDL params:', params);
+            
+            const result = await this.executeQuery(connectionId, query, params);
+            console.log('Function DDL query result:', result);
+
+            if (!result.success || !result.data || result.data.length === 0) {
+                return {
+                    success: false,
+                    message: 'Función no encontrada'
+                };
+            }
+
+            const func = result.data[0];
+            const ddl = this.buildFunctionDDL(func);
+
+            return {
+                success: true,
+                data: ddl,
+                message: 'DDL de función generado exitosamente'
+            };
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al generar DDL de función',
+                error: { message: error.message }
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async generateTriggerDDL(connectionId: string, triggerName: string, schemaName: string = ''): Promise<any> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            console.log('generateTriggerDDL called with:', { connectionId, triggerName, schemaName });
+
+            const query = `
+                SELECT 
+                    TRIM(T.RDB$TRIGGER_NAME) AS TRIGGER_NAME,
+                    TRIM(T.RDB$RELATION_NAME) AS RELATION_NAME,
+                    T.RDB$TRIGGER_TYPE AS TRIGGER_TYPE,
+                    CAST(T.RDB$TRIGGER_SOURCE AS VARCHAR(8000)) AS TRIGGER_SOURCE,
+                    T.RDB$TRIGGER_BLR AS TRIGGER_BLR,
+                    T.RDB$DESCRIPTION AS DESCRIPTION,
+                    T.RDB$TRIGGER_INACTIVE AS TRIGGER_INACTIVE,
+                    T.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
+                    T.RDB$FLAGS AS FLAGS,
+                    T.RDB$VALID_BLR AS VALID_BLR,
+                    T.RDB$DEBUG_INFO AS DEBUG_INFO
+                FROM RDB$TRIGGERS T
+                WHERE T.RDB$TRIGGER_NAME = ?
+            `;
+
+            const params = [triggerName];
+            console.log('Trigger DDL query:', query);
+            console.log('Trigger DDL params:', params);
+            
+            const result = await this.executeQuery(connectionId, query, params);
+            console.log('Trigger DDL query result:', result);
+
+            if (!result.success || !result.data || result.data.length === 0) {
+                return {
+                    success: false,
+                    message: 'Trigger no encontrado'
+                };
+            }
+
+            const trigger = result.data[0];
+            const ddl = this.buildTriggerDDL(trigger);
+
+            return {
+                success: true,
+                data: ddl,
+                message: 'DDL de trigger generado exitosamente'
+            };
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al generar DDL de trigger',
+                error: { message: error.message }
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async generateProcedureDDL(connectionId: string, procedureName: string, schemaName: string = ''): Promise<any> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            console.log('generateProcedureDDL called with:', { connectionId, procedureName, schemaName });
+
+            const query = `
+                SELECT 
+                    TRIM(P.RDB$PROCEDURE_NAME) AS PROCEDURE_NAME,
+                    TRIM(P.RDB$OWNER_NAME) AS OWNER_NAME,
+                    CAST(P.RDB$PROCEDURE_SOURCE AS VARCHAR(8000)) AS PROCEDURE_SOURCE,
+                    P.RDB$PROCEDURE_BLR AS PROCEDURE_BLR,
+                    P.RDB$DESCRIPTION AS DESCRIPTION,
+                    P.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
+                    P.RDB$SECURITY_CLASS AS SECURITY_CLASS,
+                    P.RDB$PROCEDURE_TYPE AS PROCEDURE_TYPE,
+                    P.RDB$VALID_BLR AS VALID_BLR,
+                    P.RDB$DEBUG_INFO AS DEBUG_INFO
+                FROM RDB$PROCEDURES P
+                WHERE P.RDB$PROCEDURE_NAME = ?
+            `;
+
+            const params = [procedureName];
+            console.log('Procedure DDL query:', query);
+            console.log('Procedure DDL params:', params);
+            
+            const result = await this.executeQuery(connectionId, query, params);
+            console.log('Procedure DDL query result:', result);
+
+            if (!result.success || !result.data || result.data.length === 0) {
+                return {
+                    success: false,
+                    message: 'Procedimiento no encontrado'
+                };
+            }
+
+            const proc = result.data[0];
+            const ddl = this.buildProcedureDDL(proc);
+
+            return {
+                success: true,
+                data: ddl,
+                message: 'DDL de procedimiento generado exitosamente'
+            };
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al generar DDL de procedimiento',
+                error: { message: error.message }
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async generateViewDDL(connectionId: string, viewName: string, schemaName: string = ''): Promise<any> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            console.log('generateViewDDL called with:', { connectionId, viewName, schemaName });
+
+            // Consulta simple y directa
+            const query = `
+                SELECT 
+                    TRIM(R.RDB$RELATION_NAME) AS VIEW_NAME,
+                    TRIM(R.RDB$OWNER_NAME) AS OWNER_NAME,
+                    CAST(R.RDB$VIEW_SOURCE AS VARCHAR(8000)) AS VIEW_SOURCE,
+                    R.RDB$DESCRIPTION AS DESCRIPTION,
+                    R.RDB$SYSTEM_FLAG AS SYSTEM_FLAG
+                FROM RDB$RELATIONS R
+                WHERE R.RDB$RELATION_NAME = ?
+                AND R.RDB$VIEW_BLR IS NOT NULL
+            `;
+
+            const params = [viewName];
+            console.log('View DDL query:', query);
+            console.log('View DDL params:', params);
+            
+            const result = await this.executeQuery(connectionId, query, params);
+            console.log('View DDL query result:', result);
+
+            if (!result.success || !result.data || result.data.length === 0) {
+                return {
+                    success: false,
+                    message: 'Vista no encontrada'
+                };
+            }
+
+            const view = result.data[0];
+            console.log('View data received:', view);
+            
+            const ddl = this.buildViewDDL(view);
+
+            return {
+                success: true,
+                data: ddl,
+                message: 'DDL de vista generado exitosamente'
+            };
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al generar DDL de vista',
+                error: { message: error.message }
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async generateIndexDDL(connectionId: string, indexName: string, schemaName: string = ''): Promise<any> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            const query = `
+                SELECT 
+                    TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
+                    TRIM(I.RDB$RELATION_NAME) AS RELATION_NAME,
+                    TRIM(COALESCE(R.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
+                    I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
+                    I.RDB$INDEX_TYPE AS INDEX_TYPE,
+                    I.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
+                    I.RDB$STATISTICS AS STATISTICS,
+                    I.RDB$FOREIGN_KEY AS FOREIGN_KEY
+                FROM RDB$INDICES I
+                LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
+                WHERE I.RDB$INDEX_NAME = UPPER(?)
+                ${schemaName ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
+            `;
+
+            const params = schemaName ? [indexName, schemaName] : [indexName];
+            const result = await this.executeQuery(connectionId, query, params);
+
+            if (!result.success || !result.data || result.data.length === 0) {
+                return {
+                    success: false,
+                    message: 'Índice no encontrado'
+                };
+            }
+
+            const index = result.data[0];
+            
+            const fieldsQuery = `
+                SELECT 
+                    TRIM(S.RDB$FIELD_NAME) AS FIELD_NAME,
+                    S.RDB$FIELD_POSITION AS FIELD_POSITION
+                FROM RDB$INDEX_SEGMENTS S
+                WHERE S.RDB$INDEX_NAME = UPPER(?)
+                ORDER BY S.RDB$FIELD_POSITION
+            `;
+            
+            const fieldsResult = await this.executeQuery(connectionId, fieldsQuery, [indexName]);
+            const fields = fieldsResult.success ? fieldsResult.data : [];
+
+            const ddl = this.buildIndexDDL(index, fields);
+
+            return {
+                success: true,
+                data: ddl,
+                message: 'DDL de índice generado exitosamente'
+            };
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al generar DDL de índice',
+                error: { message: error.message }
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+    // FUNCIONES AUXILIARES PARA CONSTRUIR DDL
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private async getTableIndexes(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+        const query = `
+            SELECT 
+                TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
+                I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
+                I.RDB$INDEX_TYPE AS INDEX_TYPE
+            FROM RDB$INDICES I
+            LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
+            WHERE I.RDB$RELATION_NAME = UPPER(?)
+            AND (I.RDB$SYSTEM_FLAG IS NULL OR I.RDB$SYSTEM_FLAG = 0)
+            ${schemaName ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
+        `;
+
+        const params = schemaName ? [tableName, schemaName] : [tableName];
+        return this.executeQuery(connectionId, query, params);
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private async getTableConstraints(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+        const query = `
+            SELECT 
+                TRIM(RC.RDB$CONSTRAINT_NAME) AS CONSTRAINT_NAME,
+                RC.RDB$CONSTRAINT_TYPE AS CONSTRAINT_TYPE,
+                TRIM(RC.RDB$RELATION_NAME) AS RELATION_NAME,
+                TRIM(RC.RDB$INDEX_NAME) AS INDEX_NAME,
+                TRIM(RC.RDB$DEFERRABLE) AS DEFERRABLE,
+                TRIM(RC.RDB$INITIALLY_DEFERRED) AS INITIALLY_DEFERRED
+            FROM RDB$RELATION_CONSTRAINTS RC
+            LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = RC.RDB$RELATION_NAME
+            WHERE RC.RDB$RELATION_NAME = UPPER(?)
+            ${schemaName ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
+        `;
+
+        const params = schemaName ? [tableName, schemaName] : [tableName];
+        return this.executeQuery(connectionId, query, params);
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private buildTableDDL(tableName: string, schemaName: string, columns: any[], indexes: any[], constraints: any[]): string {
+        let ddl = `CREATE TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}" (\n`;
+
+
+        const columnDefinitions = columns.map(col => {
+            let definition = `  "${col.name}" ${this.getFirebirdDataType(col)}`;
+
+            if (!col.isNullable) {
+                definition += ' NOT NULL';
+            }
+
+            if (col.defaultValue) {
+                definition += ` DEFAULT ${col.defaultValue}`;
+            }
+
+            return definition;
+        });
+
+        ddl += columnDefinitions.join(',\n');
+
+
+        const primaryKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'PRIMARY KEY');
+        const foreignKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'FOREIGN KEY');
+        const uniqueKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'UNIQUE');
+        const checkConstraints = constraints.filter(c => c.CONSTRAINT_TYPE === 'CHECK');
+
+        if (primaryKeys.length > 0) {
+            ddl += ',\n  PRIMARY KEY (';
+            const pkFields = this.getConstraintFields(columns, primaryKeys[0]);
+            ddl += pkFields.map(f => `"${f}"`).join(', ');
+            ddl += ')';
+        }
+
+        if (uniqueKeys.length > 0) {
+            for (const uk of uniqueKeys) {
+                ddl += ',\n  UNIQUE (';
+                const ukFields = this.getConstraintFields(columns, uk);
+                ddl += ukFields.map(f => `"${f}"`).join(', ');
+                ddl += ')';
+            }
+        }
+
+        ddl += '\n);\n';
+
+
+        for (const index of indexes) {
+            if (index.INDEX_NAME && !index.INDEX_NAME.startsWith('RDB$')) {
+                ddl += `\nCREATE ${index.IS_UNIQUE ? 'UNIQUE ' : ''}INDEX "${index.INDEX_NAME}" ON "${schemaName ? `${schemaName}.` : ''}"${tableName}" (`;
+
+                ddl += '/* campos del índice */';
+                ddl += ');\n';
+            }
+        }
+
+        return ddl;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private buildFunctionDDL(func: any): string {
+        let ddl = `CREATE FUNCTION ${func.OWNER_NAME ? `${func.OWNER_NAME}.` : ''}"${func.FUNCTION_NAME}" `;
+        
+        // Agregar parámetros si los hay
+        ddl += '()\n';
+        
+        // Agregar tipo de retorno
+        if (func.RETURN_ARGUMENT) {
+            ddl += `RETURNS ${this.getFirebirdDataType({ dataType: func.RETURN_ARGUMENT })}\n`;
+        }
+        
+        ddl += 'AS\n';
+        
+        if (func.FUNCTION_SOURCE) {
+            ddl += func.FUNCTION_SOURCE;
+        } else {
+            ddl += '/* Código de la función no disponible */';
+        }
+        
+        return ddl;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private buildTriggerDDL(trigger: any): string {
+        let ddl = `CREATE TRIGGER "${trigger.TRIGGER_NAME}" `;
+        
+        const triggerType = this.getTriggerType(trigger.TRIGGER_TYPE);
+        ddl += `${triggerType} ON "${trigger.RELATION_NAME}"\n`;
+        
+        if (trigger.TRIGGER_INACTIVE) {
+            ddl += 'INACTIVE\n';
+        }
+        
+        
+        if (trigger.TRIGGER_SOURCE) {
+            ddl += trigger.TRIGGER_SOURCE;
+        } else {
+            ddl += '/* Código del trigger no disponible */';
+        }
+        
+        return ddl;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private buildProcedureDDL(proc: any): string {
+        let ddl = `CREATE PROCEDURE "${proc.PROCEDURE_NAME}" `;
+        
+        // Agregar parámetros si los hay
+        ddl += '()\n';
+        
+        ddl += 'AS\n';
+        
+        if (proc.PROCEDURE_SOURCE) {
+            ddl += proc.PROCEDURE_SOURCE;
+        } else {
+            ddl += '/* Código del procedimiento no disponible */';
+        }
+        
+        return ddl;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private buildViewDDL(view: any): string {
+        let ddl = `CREATE VIEW "${view.VIEW_NAME}" `;
+        
+        ddl += 'AS\n';
+        
+        if (view.VIEW_SOURCE) {
+            ddl += view.VIEW_SOURCE;
+        } else {
+            ddl += '/* Código de la vista no disponible */';
+        }
+        
+        return ddl;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async generateSequenceDDL(connectionId: string, sequenceName: string, schemaName: string = ''): Promise<any> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexion no encontrada'
+                };
+            }
+
+            const query = `
+                SELECT 
+                    TRIM(G.RDB$GENERATOR_NAME) AS SEQUENCE_NAME,
+                    TRIM(G.RDB$OWNER_NAME) AS OWNER_NAME,
+                    G.RDB$DESCRIPTION AS DESCRIPTION,
+                    G.RDB$SYSTEM_FLAG AS SYSTEM_FLAG
+                FROM RDB$GENERATORS G
+                WHERE G.RDB$GENERATOR_NAME = UPPER(?)
+                ${schemaName ? `AND G.RDB$OWNER_NAME = UPPER(?)` : ''}
+            `;
+
+            const params = schemaName ? [sequenceName, schemaName] : [sequenceName];
+            const result = await this.executeQuery(connectionId, query, params);
+
+            if (!result.success || !result.data || result.data.length === 0) {
+                return {
+                    success: false,
+                    message: 'Secuencia no encontrada'
+                };
+            }
+
+            const seq = result.data[0];
+            const ddl = this.buildSequenceDDL(seq);
+
+            return {
+                success: true,
+                data: ddl,
+                message: 'DDL de secuencia generado exitosamente'
+            };
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al generar DDL de secuencia',
+                error: { message: error.message }
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    async generateUserDDL(connectionId: string, userName: string): Promise<any> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexion no encontrada'
+                };
+            }
+
+            const query = `
+                SELECT 
+                    TRIM(SEC$USER_NAME) AS USER_NAME,
+                    SEC$ACTIVE AS ACTIVE,
+                    TRIM(SEC$PLUGIN) AS PLUGIN,
+                    TRIM(SEC$FIRST_NAME) AS FIRST_NAME,
+                    TRIM(SEC$LAST_NAME) AS LAST_NAME
+                FROM SEC$USERS
+                WHERE SEC$USER_NAME = UPPER(?)
+            `;
+
+            const result = await this.executeQuery(connectionId, query, [userName]);
+
+            if (!result.success || !result.data || result.data.length === 0) {
+                return {
+                    success: false,
+                    message: 'Usuario no encontrado'
+                };
+            }
+
+            const user = result.data[0];
+            const ddl = this.buildUserDDL(user);
+
+            return {
+                success: true,
+                data: ddl,
+                message: 'DDL de usuario generado exitosamente'
+            };
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al generar DDL de usuario',
+                error: { message: error.message }
+            };
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private buildUserDDL(user: any): string {
+        let ddl = `CREATE USER "${user.USER_NAME}"`;
+        
+        if (user.FIRST_NAME) {
+            ddl += ` FIRSTNAME '${user.FIRST_NAME}'`;
+        }
+        
+        if (user.LAST_NAME) {
+            ddl += ` LASTNAME '${user.LAST_NAME}'`;
+        }
+        
+        if (user.PLUGIN) {
+            ddl += ` USING PLUGIN ${user.PLUGIN}`;
+        }
+        
+        return ddl;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private buildSequenceDDL(seq: any): string {
+        let ddl = `CREATE SEQUENCE "${seq.SEQUENCE_NAME}"`;
+        
+        // Por ahora solo creamos la secuencia básica
+        // En el futuro se podría agregar START WITH, INCREMENT BY, etc.
+        
+        return ddl;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private buildIndexDDL(index: any, fields: any[]): string {
+        let ddl = `CREATE ${index.IS_UNIQUE ? 'UNIQUE ' : ''}INDEX "${index.INDEX_NAME}" `;
+        ddl += `ON ${index.RELATION_NAME}" (`;
+        if (fields.length > 0) {
+            ddl += fields.map(f => `"${f.FIELD_NAME}"`).join(', ');
+        } else {
+            ddl += '/* campos del indice */';
+        }
+        
+        ddl += ');';
+        
+        return ddl;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private getFirebirdDataType(column: any): string {
+        const typeCode = column.dataType;
+        const maxLength = column.maxLength;
+        const precision = column.precision;
+        const scale = column.scale;
+
+        let type = '';
+        switch (typeCode) {
+            case 7: type = 'SMALLINT'; break;
+            case 8: type = 'INTEGER'; break;
+            case 9: type = 'QUAD'; break;
+            case 10: type = 'FLOAT'; break;
+            case 11: type = 'D_FLOAT'; break;
+            case 12: type = 'DATE'; break;
+            case 13: type = 'TIME'; break;
+            case 14: type = 'CHAR'; break;
+            case 16: type = 'INT64'; break;
+            case 27: type = 'DOUBLE PRECISION'; break;
+            case 35: type = 'TIMESTAMP'; break;
+            case 37: type = 'VARCHAR'; break;
+            case 40: type = 'CSTRING'; break;
+            case 261: type = 'BLOB'; break;
+            default: type = 'UNKNOWN'; break;
+        }
+
+        if ((type === 'CHAR' || type === 'VARCHAR') && maxLength) {
+            type += `(${maxLength})`;
+        }
+
+        if ((type === 'DECIMAL' || type === 'NUMERIC') && precision && scale !== undefined) {
+            type += `(${precision},${scale})`;
+        }
+
+        return type;
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private getTriggerType(type: number): string {
+        switch (type) {
+            case 1: return 'BEFORE INSERT';
+            case 2: return 'AFTER INSERT';
+            case 3: return 'BEFORE UPDATE';
+            case 4: return 'AFTER UPDATE';
+            case 5: return 'BEFORE DELETE';
+            case 6: return 'AFTER DELETE';
+            case 17: return 'BEFORE INSERT OR UPDATE';
+            case 18: return 'AFTER INSERT OR UPDATE';
+            case 25: return 'BEFORE INSERT OR DELETE';
+            case 26: return 'AFTER INSERT OR DELETE';
+            case 27: return 'BEFORE UPDATE OR DELETE';
+            case 28: return 'AFTER UPDATE OR DELETE';
+            case 113: return 'BEFORE INSERT OR UPDATE OR DELETE';
+            case 114: return 'AFTER INSERT OR UPDATE OR DELETE';
+            default: return 'UNKNOWN';
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    private getConstraintFields(columns: any[], constraint: any): string[] {
+
+        return [];
+    }
+
+    
+    async alterTable(params: {
+        connectionId: string;
+        schemaName: string;
+        tableName: string;
+        alterationType: 'ADD_COLUMN' | 'DROP_COLUMN' | 'MODIFY_COLUMN' | 'RENAME_COLUMN' | 'RENAME_TABLE';
+        columnDefinition?: ColumnDefinition;
+        oldColumnName?: string;
+        newColumnName?: string;
+        newTableName?: string;
+    }): Promise<TableOperationResponse> {
+        try {
+            const { connectionId, schemaName, tableName, alterationType } = params;
+
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            let sql = '';
+            
+            switch (alterationType) {
+                case 'ADD_COLUMN':
+                    if (!params.columnDefinition) {
+                        return { success: false, message: 'Definición de columna requerida' };
+                    }
+                    sql = `ALTER TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}" ADD "${params.columnDefinition.name}" ${params.columnDefinition.type}`;
+                    if (params.columnDefinition.length) {
+                        sql += `(${params.columnDefinition.length})`;
+                    }
+                    if (!params.columnDefinition.nullable) {
+                        sql += ' NOT NULL';
+                    }
+                    break;
+
+                case 'DROP_COLUMN':
+                    if (!params.oldColumnName) {
+                        return { success: false, message: 'Nombre de columna requerido' };
+                    }
+                    sql = `ALTER TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}" DROP "${params.oldColumnName}"`;
+                    break;
+
+                case 'RENAME_TABLE':
+                    if (!params.newTableName) {
+                        return { success: false, message: 'Nuevo nombre de tabla requerido' };
+                    }
+                    sql = `ALTER TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}" TO "${params.newTableName}"`;
+                    break;
+
+                default:
+                    return { success: false, message: 'Tipo de alteración no soportado' };
+            }
+
+            const result = await this.executeQuery(connectionId, sql);
+            
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Tabla ${tableName} modificada exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al modificar la tabla',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al modificar la tabla'
+            };
+        }
+    }
+
+    async dropTable(connectionId: string, tableName: string, schemaName: string = '', cascade: boolean = false): Promise<TableOperationResponse> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+            const existsResult = await this.checkTableExists(connectionId, schemaName, tableName);
+            if (!existsResult.success || !existsResult.exists) {
+                return {
+                    success: false,
+                    message: `La tabla ${tableName} no existe`
+                };
+            }
+
+            const sql = `DROP TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}"${cascade ? ' CASCADE' : ''}`;
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Tabla ${tableName} eliminada exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al eliminar la tabla',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al eliminar la tabla'
+            };
+        }
+    }
+
+    async dropView(connectionId: string, viewName: string, schemaName: string = '', cascade: boolean = false): Promise<TableOperationResponse> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            const sql = `DROP VIEW ${schemaName ? `${schemaName}.` : ''}"${viewName}"${cascade ? ' CASCADE' : ''}`;
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Vista ${viewName} eliminada exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al eliminar la vista',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al eliminar la vista'
+            };
+        }
+    }
+
+    async dropProcedure(connectionId: string, procedureName: string, schemaName: string = ''): Promise<TableOperationResponse> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            const sql = `DROP PROCEDURE ${schemaName ? `${schemaName}.` : ''}"${procedureName}"`;
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Procedimiento ${procedureName} eliminado exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al eliminar el procedimiento',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al eliminar el procedimiento'
+            };
+        }
+    }
+
+    async dropFunction(connectionId: string, functionName: string, schemaName: string = ''): Promise<TableOperationResponse> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            const sql = `DROP FUNCTION ${schemaName ? `${schemaName}.` : ''}"${functionName}"`;
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Función ${functionName} eliminada exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al eliminar la función',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al eliminar la función'
+            };
+        }
+    }
+
+    async dropTrigger(connectionId: string, triggerName: string): Promise<TableOperationResponse> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            const sql = `DROP TRIGGER "${triggerName}"`;
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Trigger ${triggerName} eliminado exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al eliminar el trigger',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al eliminar el trigger'
+            };
+        }
+    }
+
+    async dropIndex(connectionId: string, indexName: string): Promise<TableOperationResponse> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            const sql = `DROP INDEX "${indexName}"`;
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Índice ${indexName} eliminado exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al eliminar el índice',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al eliminar el índice'
+            };
+        }
+    }
+
+    async dropSequence(connectionId: string, sequenceName: string): Promise<TableOperationResponse> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            const sql = `DROP SEQUENCE "${sequenceName}"`;
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Secuencia ${sequenceName} eliminada exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al eliminar la secuencia',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al eliminar la secuencia'
+            };
+        }
+    }
+
+    async createIndex(params: {
+        connectionId: string;
+        indexName: string;
+        tableName: string;
+        schemaName?: string;
+        columns: string[];
+        unique?: boolean;
+        ascending?: boolean[];
+    }): Promise<TableOperationResponse> {
+        try {
+            const { connectionId, indexName, tableName, schemaName, columns, unique = false, ascending } = params;
+
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            if (!indexName || !tableName || !columns || columns.length === 0) {
+                return {
+                    success: false,
+                    message: 'Nombre de índice, tabla y columnas son requeridos'
+                };
+            }
+
+            let sql = `CREATE ${unique ? 'UNIQUE ' : ''}INDEX "${indexName}" ON ${schemaName ? `${schemaName}.` : ''}"${tableName}" (`;
+            
+            const columnSpecs = columns.map((col, index) => {
+                let spec = `"${col}"`;
+                if (ascending && ascending[index] === false) {
+                    spec += ' DESC';
+                }
+                return spec;
+            });
+
+            sql += columnSpecs.join(', ') + ')';
+
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Índice ${indexName} creado exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al crear el índice',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al crear el índice'
+            };
+        }
+    }
+
+    async createSequence(params: {
+        connectionId: string;
+        sequenceName: string;
+        schemaName?: string;
+        startValue?: number;
+        incrementBy?: number;
+    }): Promise<TableOperationResponse> {
+        try {
+            const { connectionId, sequenceName, schemaName, startValue = 1, incrementBy = 1 } = params;
+
+            if (!this.conexiones[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            if (!sequenceName) {
+                return {
+                    success: false,
+                    message: 'Nombre de secuencia es requerido'
+                };
+            }
+
+
+            let sql = `CREATE SEQUENCE "${sequenceName}"`;
+            
+            const result = await this.executeQuery(connectionId, sql);
+
+            if (result.success && startValue !== 1) {
+
+                const setValueSql = `SET GENERATOR "${sequenceName}" TO ${startValue - incrementBy}`;
+                await this.executeQuery(connectionId, setValueSql);
+            }
+
+            if (result.success) {
+                return {
+                    success: true,
+                    message: `Secuencia ${sequenceName} creada exitosamente`,
+                    sql: sql
+                };
+            } else {
+                return {
+                    success: false,
+                    message: result.error || 'Error al crear la secuencia',
+                    sql: sql
+                };
+            }
+
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.message || 'Error al crear la secuencia'
+            };
+        }
+    }
 }
+
+
+
+
+
 
 module.exports = new databaseManager();

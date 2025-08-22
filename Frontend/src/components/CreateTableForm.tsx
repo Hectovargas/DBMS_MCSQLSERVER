@@ -1,128 +1,122 @@
-// CreateTableForm.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import apiService from '../services/apiService';
 import './CreateTableForm.css';
 
-interface ColumnDefinition {
-  name: string;
-  type: string;
-  length?: number;
-  nullable: boolean;
-  defaultValue?: string;
-  primaryKey: boolean;
-  unique: boolean;
-}
-
 interface CreateTableFormProps {
-  connectionId: string;
-  schemaName: string;
   isOpen: boolean;
   onClose: () => void;
-  onTableCreated: () => void;
+  connectionId: string;
+  schemaName: string;
+  onSuccess?: () => void;
+}
+
+interface Column {
+  name: string;
+  type: string;
+  size?: string;
+  nullable: boolean;
+  primaryKey: boolean;
+  defaultValue?: string;
 }
 
 const CreateTableForm: React.FC<CreateTableFormProps> = ({
-  connectionId,
-  schemaName,
   isOpen,
   onClose,
-  onTableCreated
+  connectionId,
+  schemaName,
+  onSuccess
 }) => {
   const [tableName, setTableName] = useState('');
-  const [columns, setColumns] = useState<ColumnDefinition[]>([
-    { name: 'id', type: 'INTEGER', nullable: false, primaryKey: true, unique: true }
+  const [columns, setColumns] = useState<Column[]>([
+    { name: '', type: 'VARCHAR', size: '255', nullable: true, primaryKey: false, defaultValue: '' }
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  
-  // Tipos de datos comunes para Firebird
+
   const dataTypes = [
-    'INTEGER', 'BIGINT', 'SMALLINT', 'FLOAT', 'DOUBLE PRECISION',
-    'CHAR', 'VARCHAR', 'BLOB', 'DATE', 'TIME', 'TIMESTAMP',
-    'BOOLEAN', 'DECIMAL', 'NUMERIC'
+    'VARCHAR', 'CHAR', 'INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 'NUMERIC',
+    'FLOAT', 'DOUBLE PRECISION', 'DATE', 'TIME', 'TIMESTAMP', 'BLOB', 'TEXT'
   ];
 
-  useEffect(() => {
-    if (isOpen) {
-      resetForm();
+  const addColumn = () => {
+    setColumns([...columns, { name: '', type: 'VARCHAR', size: '255', nullable: true, primaryKey: false, defaultValue: '' }]);
+  };
+
+  const removeColumn = (index: number) => {
+    if (columns.length > 1) {
+      setColumns(columns.filter((_, i) => i !== index));
     }
-  }, [isOpen]);
-
-  const resetForm = () => {
-    setTableName('');
-    setColumns([{ name: 'id', type: 'INTEGER', nullable: false, primaryKey: true, unique: true }]);
-    setError('');
-    setSuccess('');
-    setLoading(false);
   };
 
-  const handleAddColumn = () => {
-    setColumns([...columns, {
-      name: '',
-      type: 'VARCHAR',
-      length: 255,
-      nullable: true,
-      primaryKey: false,
-      unique: false
-    }]);
-  };
-
-  const handleRemoveColumn = (index: number) => {
-    const newColumns = [...columns];
-    newColumns.splice(index, 1);
-    setColumns(newColumns);
-  };
-
-  const handleColumnChange = (index: number, field: keyof ColumnDefinition, value: any) => {
+  const updateColumn = (index: number, field: keyof Column, value: any) => {
     const newColumns = [...columns];
     newColumns[index] = { ...newColumns[index], [field]: value };
-    
-    // Si se marca como primary key, asegurarse de que no sea nullable
-    if (field === 'primaryKey' && value) {
-      newColumns[index].nullable = false;
-    }
-    
     setColumns(newColumns);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!tableName) {
+  const generateDDL = () => {
+    if (!tableName.trim()) {
       setError('El nombre de la tabla es requerido');
       return;
     }
 
-    if (columns.length === 0) {
-      setError('Debe agregar al menos una columna');
+    const invalidColumns = columns.filter(col => !col.name.trim());
+    if (invalidColumns.length > 0) {
+      setError('Todos los nombres de columnas son requeridos');
       return;
     }
 
-    setLoading(true);
+    let ddl = `CREATE TABLE ${schemaName}.${tableName.toUpperCase()} (\n`;
+    
+    const columnDefinitions = columns.map(col => {
+      let definition = `  ${col.name.toUpperCase()} ${col.type}`;
+      
+      if (col.size && ['VARCHAR', 'CHAR', 'DECIMAL', 'NUMERIC'].includes(col.type)) {
+        definition += `(${col.size})`;
+      }
+      
+      if (!col.nullable) {
+        definition += ' NOT NULL';
+      }
+      
+      if (col.defaultValue && col.defaultValue.trim()) {
+        definition += ` DEFAULT ${col.defaultValue}`;
+      }
+      
+      return definition;
+    });
+
+    const primaryKeys = columns.filter(col => col.primaryKey).map(col => col.name.toUpperCase());
+    if (primaryKeys.length > 0) {
+      columnDefinitions.push(`  PRIMARY KEY (${primaryKeys.join(', ')})`);
+    }
+
+    ddl += columnDefinitions.join(',\n') + '\n);';
+    
+    return ddl;
+  };
+
+  const handleSubmit = async () => {
     setError('');
-    setSuccess('');
+    setLoading(true);
 
     try {
-      const result = await apiService.createTable({
-        connectionId,
-        schemaName,
-        tableName,
-        columns
-      });
+      const ddl = generateDDL();
+      if (!ddl) return;
 
+      const result = await apiService.executeQuery(connectionId, ddl);
+      
       if (result.success) {
-        setSuccess(`Tabla "${tableName}" creada exitosamente`);
-        setTimeout(() => {
-          onTableCreated();
-          onClose();
-        }, 1500);
+        alert('Tabla creada exitosamente');
+        onSuccess?.();
+        onClose();
+        setTableName('');
+        setColumns([{ name: '', type: 'VARCHAR', size: '255', nullable: true, primaryKey: false, defaultValue: '' }]);
       } else {
-        setError(result.message || 'Error al crear la tabla');
+        setError(result.error?.message || 'Error al crear la tabla');
       }
-    } catch (err: any) {
-      console.error('Error al crear tabla:', err);
-      setError(err.message || 'Error al crear la tabla');
+    } catch (err) {
+      setError('Error al crear la tabla: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     } finally {
       setLoading(false);
     }
@@ -131,168 +125,118 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-content create-table-modal">
         <div className="modal-header">
           <h2>Crear Nueva Tabla</h2>
-          <button 
-            className="modal-close-btn" 
-            onClick={onClose}
-            disabled={loading}
-            title="Cerrar"
-          >
-            ✕
-          </button>
+          <button className="close-btn" onClick={onClose}>&times;</button>
         </div>
-        
-        {error && (
-          <div className="error-message">
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-        
-        {success && (
-          <div className="success-message">
-            <strong>Éxito:</strong> {success}
-          </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="create-table-form">
+        <div className="modal-body">
           <div className="form-group">
-            <label htmlFor="tableName">Nombre de la Tabla *</label>
+            <label htmlFor="tableName">Nombre de la Tabla:</label>
             <input
               type="text"
               id="tableName"
               value={tableName}
               onChange={(e) => setTableName(e.target.value)}
-              required
               placeholder="nombre_tabla"
-              disabled={loading}
+              className="form-input"
             />
-          </div>
-
-          <div className="form-group">
-            <label>Esquema:</label>
-            <div className="schema-display">{schemaName}</div>
           </div>
 
           <div className="form-group">
             <label>Columnas:</label>
             <div className="columns-container">
               {columns.map((column, index) => (
-                <div key={index} className="column-definition">
-                  <div className="column-row">
-                    <input
-                      type="text"
-                      placeholder="nombre_columna"
-                      value={column.name}
-                      onChange={(e) => handleColumnChange(index, 'name', e.target.value)}
-                      required
-                      disabled={loading}
-                    />
-                    
-                    <select
-                      value={column.type}
-                      onChange={(e) => handleColumnChange(index, 'type', e.target.value)}
-                      disabled={loading}
-                    >
-                      {dataTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                    
-                    {(column.type === 'VARCHAR' || column.type === 'CHAR') && (
-                      <input
-                        type="number"
-                        placeholder="Longitud"
-                        value={column.length || ''}
-                        onChange={(e) => handleColumnChange(index, 'length', parseInt(e.target.value) || undefined)}
-                        min="1"
-                        disabled={loading}
-                      />
-                    )}
-                    
-                    <div className="column-options">
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={column.nullable}
-                          onChange={(e) => handleColumnChange(index, 'nullable', e.target.checked)}
-                          disabled={column.primaryKey || loading}
-                        /> NULL
-                      </label>
-                      
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={column.primaryKey}
-                          onChange={(e) => handleColumnChange(index, 'primaryKey', e.target.checked)}
-                          disabled={loading}
-                        /> PK
-                      </label>
-                      
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={column.unique}
-                          onChange={(e) => handleColumnChange(index, 'unique', e.target.checked)}
-                          disabled={loading}
-                        /> UNIQUE
-                      </label>
-                    </div>
-                    
-                    <button
-                      type="button"
-                      className="remove-column-btn"
-                      onClick={() => handleRemoveColumn(index)}
-                      disabled={loading}
-                    >
-                      ✕
-                    </button>
-                  </div>
+                <div key={index} className="column-row">
+                  <input
+                    type="text"
+                    placeholder="Nombre columna"
+                    value={column.name}
+                    onChange={(e) => updateColumn(index, 'name', e.target.value)}
+                    className="column-name"
+                  />
                   
-                  <div className="column-row">
+                  <select
+                    value={column.type}
+                    onChange={(e) => updateColumn(index, 'type', e.target.value)}
+                    className="column-type"
+                  >
+                    {dataTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  
+                  {['VARCHAR', 'CHAR', 'DECIMAL', 'NUMERIC'].includes(column.type) && (
                     <input
                       type="text"
-                      placeholder="Valor por defecto (opcional)"
-                      value={column.defaultValue || ''}
-                      onChange={(e) => handleColumnChange(index, 'defaultValue', e.target.value)}
-                      disabled={loading}
+                      placeholder="Tamaño"
+                      value={column.size || ''}
+                      onChange={(e) => updateColumn(index, 'size', e.target.value)}
+                      className="column-size"
                     />
-                  </div>
+                  )}
+                  
+                  <input
+                    type="text"
+                    placeholder="Valor por defecto"
+                    value={column.defaultValue || ''}
+                    onChange={(e) => updateColumn(index, 'defaultValue', e.target.value)}
+                    className="column-default"
+                  />
+                  
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={column.nullable}
+                      onChange={(e) => updateColumn(index, 'nullable', e.target.checked)}
+                    />
+                    NULL
+                  </label>
+                  
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={column.primaryKey}
+                      onChange={(e) => updateColumn(index, 'primaryKey', e.target.checked)}
+                    />
+                    PK
+                  </label>
+                  
+                  <button
+                    type="button"
+                    onClick={() => removeColumn(index)}
+                    className="remove-column-btn"
+                    disabled={columns.length === 1}
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
-              
-              <button
-                type="button"
-                className="add-column-btn"
-                onClick={handleAddColumn}
-                disabled={loading}
-              >
-                + Agregar Columna
-              </button>
             </div>
+            
+            <button type="button" onClick={addColumn} className="add-column-btn">
+              + Agregar Columna
+            </button>
           </div>
 
-          <div className="form-actions">
-            <button
-              type="button"
-              className="cancel-btn"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancelar
-            </button>
-            
-            <button
-              type="submit"
-              className="create-btn"
-              disabled={loading || !tableName || columns.length === 0}
-            >
-              {loading ? 'Creando...' : 'Crear Tabla'}
-            </button>
-          </div>
-        </form>
+          {error && <div className="error-message">{error}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" onClick={onClose} className="cancel-btn">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="submit-btn"
+          >
+            {loading ? 'Creando...' : 'Crear Tabla'}
+          </button>
+        </div>
       </div>
     </div>
   );

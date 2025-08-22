@@ -7,9 +7,14 @@ import './DatabaseSidebar.css';
 interface DatabaseSidebarProps {
   onConnectionSelect?: (connectionId: string) => void;
   onTableSelect?: (connectionId: string, tableName: string, schemaName: string) => void;
+  onObjectSelect?: (connectionId: string, objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence', objectName: string, schemaName: string) => void;
   onAddConnection?: () => void;
-  onViewChange?: (view: 'welcome' | 'query' | 'table') => void; // Nueva prop
-
+  onViewChange?: (view: 'welcome' | 'query' | 'table' | 'object') => void; // Callback para cambiar vista
+  onCreateTable?: (connectionId: string, schemaName: string) => void; // Nueva prop para crear tabla
+  onCreateView?: (connectionId: string, schemaName: string) => void; // Nueva prop para crear vista
+  onViewDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user', objectName: string, schemaName: string) => void; // Nueva prop para ver DDL
+  onModifyDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user', objectName: string, schemaName: string) => void; // Nueva prop para modificar DDL
+  onViewTable?: (connectionId: string, tableName: string, schemaName: string) => void; // Nueva prop para ver tabla
 }
 
 export interface DatabaseSidebarRef {
@@ -21,8 +26,14 @@ export interface DatabaseSidebarRef {
 const DatabaseSidebar = forwardRef(({
   onConnectionSelect,
   onTableSelect,
+  onObjectSelect,
   onAddConnection,
   onViewChange,
+  onCreateTable,
+  onCreateView,
+  onViewDDL,
+  onModifyDDL,
+  onViewTable,
 }: DatabaseSidebarProps, ref: Ref<DatabaseSidebarRef>) => {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -33,6 +44,24 @@ const DatabaseSidebar = forwardRef(({
     x: 0,
     y: 0,
     connectionId: '',
+    isVisible: false
+  });
+
+  const [objectContextMenu, setObjectContextMenu] = useState<{
+    x: number;
+    y: number;
+    connectionId: string;
+    schemaName: string;
+    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'schema' | 'user';
+    objectName: string;
+    isVisible: boolean;
+  }>({
+    x: 0,
+    y: 0,
+    connectionId: '',
+    schemaName: '',
+    objectType: 'table',
+    objectName: '',
     isVisible: false
   });
 
@@ -607,6 +636,86 @@ const DatabaseSidebar = forwardRef(({
     }
   };
 
+  // Función para mostrar el menú contextual de objetos
+  const showObjectContextMenu = (
+    e: React.MouseEvent,
+    connectionId: string,
+    schemaName: string,
+    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'schema' | 'user',
+    objectName: string
+  ) => {
+    e.preventDefault();
+    console.log('showObjectContextMenu called with:', { connectionId, schemaName, objectType, objectName });
+    setObjectContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      connectionId,
+      schemaName,
+      objectType, // Mantener el tipo original
+      objectName,
+      isVisible: true
+    });
+  };
+
+  // Función para cerrar el menú contextual de objetos
+  const closeObjectContextMenu = () => {
+    setObjectContextMenu(prev => ({ ...prev, isVisible: false }));
+  };
+
+  // Función para manejar la acción de crear tabla
+  const handleCreateTable = () => {
+    if (onCreateTable) {
+      onCreateTable(objectContextMenu.connectionId, objectContextMenu.schemaName);
+    }
+    closeObjectContextMenu();
+  };
+
+  // Función para manejar la acción de crear vista
+  const handleCreateView = () => {
+    if (onCreateView) {
+      onCreateView(objectContextMenu.connectionId, objectContextMenu.schemaName);
+    }
+    closeObjectContextMenu();
+  };
+
+  // Función para manejar la acción de ver DDL
+  const handleViewDDL = () => {
+    if (onViewDDL && objectContextMenu.objectType !== 'schema') {
+      onViewDDL(
+        objectContextMenu.connectionId,
+        objectContextMenu.objectType as 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user',
+        objectContextMenu.objectName,
+        objectContextMenu.schemaName
+      );
+    }
+    closeObjectContextMenu();
+  };
+
+  // Función para manejar la acción de ver tabla
+  const handleViewTable = () => {
+    if (onViewTable && objectContextMenu.objectType === 'table') {
+      onViewTable(
+        objectContextMenu.connectionId,
+        objectContextMenu.objectName,
+        objectContextMenu.schemaName
+      );
+    }
+    closeObjectContextMenu();
+  };
+
+  // Función para manejar la acción de modificar DDL
+  const handleModifyDDL = () => {
+    if (onModifyDDL && objectContextMenu.objectType !== 'schema') {
+      onModifyDDL(
+        objectContextMenu.connectionId,
+        objectContextMenu.objectType as 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user',
+        objectContextMenu.objectName,
+        objectContextMenu.schemaName
+      );
+    }
+    closeObjectContextMenu();
+  };
+
   // Función para eliminar una conexión
   const deleteConnection = async (connectionId: string) => {
     try {
@@ -889,7 +998,10 @@ const DatabaseSidebar = forwardRef(({
                               const isLoadingTables = loadingTables.has(schemaKey);
 
                               return (
-                                <div key={`schema-${connection.id}-${schema.schema_name}`} className="schema-item">
+                                <div 
+                                  key={`schema-${connection.id}-${schema.schema_name}`} 
+                                  className="schema-item"
+                                >
 
                                   {/* NUEVA SECCIÓN: Header clickeable para tablas */}
                                   <div
@@ -897,6 +1009,10 @@ const DatabaseSidebar = forwardRef(({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       toggleTablesDropdown(connection.id, schema.schema_name);
+                                    }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'table', '');
                                     }}
                                   >
                                     <span className={`expand-icon ${showTablesDropdown.has(schemaKey) ? 'expanded' : ''}`}>
@@ -931,6 +1047,10 @@ const DatabaseSidebar = forwardRef(({
                                                 console.log('onTableSelect is not defined');
                                               }
                                             }}
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'table', table.table_name);
+                                            }}
                                           >
                                             <span className="table-icon table-icon-img"></span>
                                             <span className="table-name">{table.table_name}</span>
@@ -956,6 +1076,10 @@ const DatabaseSidebar = forwardRef(({
                                       e.stopPropagation();
                                       toggleGenericSchemaDropdown('views', connection.id, schema.schema_name);
                                     }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'view', '');
+                                    }}
                                   >
                                     <span className={`expand-icon ${showViewsDropdown.has(schemaKey) ? 'expanded' : ''}`}>
                                       {showViewsDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
@@ -968,7 +1092,19 @@ const DatabaseSidebar = forwardRef(({
                                     <div className="schemas-dropdown schema-element">
                                       <div className="tables-list">
                                         {(schemaViews[schemaKey] || []).map((view) => (
-                                          <div key={`view-${connection.id}-${schema.schema_name}-${view.view_name}`} className="table-item">
+                                          <div 
+                                            key={`view-${connection.id}-${schema.schema_name}-${view.view_name}`} 
+                                            className="table-item clickeable-item"
+                                            onClick={() => {
+                                              if (onObjectSelect) {
+                                                onObjectSelect(connection.id, 'view', view.view_name, schema.schema_name);
+                                              }
+                                            }}
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'view', view.view_name);
+                                            }}
+                                          >
                                             <span className="table-icon table-icon-img"></span>
                                             <span className="table-name">{view.view_name}</span>
                                           </div>
@@ -987,6 +1123,10 @@ const DatabaseSidebar = forwardRef(({
                                       e.stopPropagation();
                                       toggleGenericSchemaDropdown('procedures', connection.id, schema.schema_name);
                                     }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'procedure', '');
+                                    }}
                                   >
                                     <span className={`expand-icon ${showProceduresDropdown.has(schemaKey) ? 'expanded' : ''}`}>
                                       {showProceduresDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
@@ -999,7 +1139,19 @@ const DatabaseSidebar = forwardRef(({
                                     <div className="schemas-dropdown schema-element">
                                       <div className="tables-list">
                                         {(schemaProcedures[schemaKey] || []).map((proc) => (
-                                          <div key={`proc-${connection.id}-${schema.schema_name}-${proc.procedure_name}`} className="table-item">
+                                          <div 
+                                            key={`proc-${connection.id}-${schema.schema_name}-${proc.procedure_name}`} 
+                                            className="table-item clickeable-item"
+                                            onClick={() => {
+                                              if (onObjectSelect) {
+                                                onObjectSelect(connection.id, 'procedure', proc.procedure_name, schema.schema_name);
+                                              }
+                                            }}
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'procedure', proc.procedure_name);
+                                            }}
+                                          >
                                             <span className="table-icon table-icon-img"></span>
                                             <span className="table-name">{proc.procedure_name}</span>
                                           </div>
@@ -1018,6 +1170,10 @@ const DatabaseSidebar = forwardRef(({
                                       e.stopPropagation();
                                       toggleGenericSchemaDropdown('functions', connection.id, schema.schema_name);
                                     }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'function', '');
+                                    }}
                                   >
                                     <span className={`expand-icon ${showFunctionsDropdown.has(schemaKey) ? 'expanded' : ''}`}>
                                       {showFunctionsDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
@@ -1030,7 +1186,19 @@ const DatabaseSidebar = forwardRef(({
                                     <div className="schemas-dropdown schema-element">
                                       <div className="tables-list">
                                         {(schemaFunctions[schemaKey] || []).map((fn) => (
-                                          <div key={`fn-${connection.id}-${schema.schema_name}-${fn.function_name}`} className="table-item">
+                                          <div 
+                                            key={`fn-${connection.id}-${schema.schema_name}-${fn.function_name}`} 
+                                            className="table-item clickeable-item"
+                                            onClick={() => {
+                                              if (onObjectSelect) {
+                                                onObjectSelect(connection.id, 'function', fn.function_name, schema.schema_name);
+                                              }
+                                            }}
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'function', fn.function_name);
+                                            }}
+                                          >
                                             <span className="table-icon table-icon-img"></span>
                                             <span className="table-name">{fn.function_name}</span>
                                           </div>
@@ -1049,6 +1217,10 @@ const DatabaseSidebar = forwardRef(({
                                       e.stopPropagation();
                                       toggleGenericSchemaDropdown('triggers', connection.id, schema.schema_name);
                                     }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'trigger', '');
+                                    }}
                                   >
                                     <span className={`expand-icon ${showTriggersDropdown.has(schemaKey) ? 'expanded' : ''}`}>
                                       {showTriggersDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
@@ -1061,7 +1233,19 @@ const DatabaseSidebar = forwardRef(({
                                     <div className="schemas-dropdown schema-element">
                                       <div className="tables-list">
                                         {(schemaTriggers[schemaKey] || []).map((tr) => (
-                                          <div key={`tr-${connection.id}-${schema.schema_name}-${tr.trigger_name}`} className="table-item">
+                                          <div 
+                                            key={`tr-${connection.id}-${schema.schema_name}-${tr.trigger_name}`} 
+                                            className="table-item clickeable-item"
+                                            onClick={() => {
+                                              if (onObjectSelect) {
+                                                onObjectSelect(connection.id, 'trigger', tr.trigger_name, schema.schema_name);
+                                              }
+                                            }}
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'trigger', tr.trigger_name);
+                                            }}
+                                          >
                                             <span className="table-icon table-icon-img"></span>
                                             <span className="table-name">{tr.trigger_name}</span>
                                             <span className="table-date">{tr.relation_name || ''}</span>
@@ -1081,6 +1265,10 @@ const DatabaseSidebar = forwardRef(({
                                       e.stopPropagation();
                                       toggleGenericSchemaDropdown('indexes', connection.id, schema.schema_name);
                                     }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'index', '');
+                                    }}
                                   >
                                     <span className={`expand-icon ${showIndexesDropdown.has(schemaKey) ? 'expanded' : ''}`}>
                                       {showIndexesDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
@@ -1095,7 +1283,16 @@ const DatabaseSidebar = forwardRef(({
                                         {(schemaIndexes[schemaKey] || []).map((ix) => (
                                           <div
                                             key={`ix-${connection.id}-${schema.schema_name}-${ix.index_name}`}
-                                            className="table-item"
+                                            className="table-item clickeable-item"
+                                            onClick={() => {
+                                              if (onObjectSelect) {
+                                                onObjectSelect(connection.id, 'index', ix.index_name, schema.schema_name);
+                                              }
+                                            }}
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'index', ix.index_name);
+                                            }}
                                           >
                                             <span className="table-icon table-icon-img"></span>
                                             <span className="table-name">{ix.index_name}</span>
@@ -1116,6 +1313,10 @@ const DatabaseSidebar = forwardRef(({
                                       e.stopPropagation();
                                       toggleGenericSchemaDropdown('sequences', connection.id, schema.schema_name);
                                     }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'sequence', '');
+                                    }}
                                   >
                                     <span className={`expand-icon ${showSequencesDropdown.has(connection.id) ? 'expanded' : ''}`}>
                                       {showSequencesDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
@@ -1130,7 +1331,16 @@ const DatabaseSidebar = forwardRef(({
                                         {(connectionSequences[connection.id] || []).map((seq) => (
                                           <div
                                             key={`seq-${connection.id}-${seq.sequence_name}`}
-                                            className="table-item"
+                                            className="table-item clickeable-item"
+                                            onClick={() => {
+                                              if (onObjectSelect) {
+                                                onObjectSelect(connection.id, 'sequence', seq.sequence_name, schema.schema_name);
+                                              }
+                                            }}
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'sequence', seq.sequence_name);
+                                            }}
                                           >
                                             <span className="table-icon table-icon-img"></span>
                                             <span className="table-name">{seq.sequence_name}</span>
@@ -1150,6 +1360,10 @@ const DatabaseSidebar = forwardRef(({
                                       e.stopPropagation();
                                       toggleGenericSchemaDropdown('users', connection.id, schema.schema_name);
                                     }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'user', '');
+                                    }}
                                   >
                                     <span className={`expand-icon ${showUsersDropdown.has(connection.id) ? 'expanded' : ''}`}>
                                       {showUsersDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
@@ -1164,7 +1378,11 @@ const DatabaseSidebar = forwardRef(({
                                         {(connectionUsers[connection.id] || []).map((usr) => (
                                           <div
                                             key={`usr-${connection.id}-${usr.user_name}`}
-                                            className="table-item"
+                                            className="table-item clickeable-item"
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'user', usr.user_name);
+                                            }}
                                           >
                                             <span className="table-icon table-icon-img"></span>
                                             <span className="table-name">{usr.user_name}</span>
@@ -1266,11 +1484,78 @@ const DatabaseSidebar = forwardRef(({
         </div>
       )}
 
+      {/* Menú contextual de objetos */}
+      {objectContextMenu.isVisible && (
+        <div
+          className="context-menu object-context-menu"
+          style={{
+            position: 'fixed',
+            top: objectContextMenu.y,
+            left: objectContextMenu.x,
+            zIndex: 1000
+          }}
+        >
+
+          {/* Debug: Mostrar información del objeto */}
+          <div style={{ padding: '8px', fontSize: '12px', color: '#666', borderBottom: '1px solid #eee' }}>
+            {objectContextMenu.objectName ? 
+              `Elemento: ${objectContextMenu.objectType} - ${objectContextMenu.objectName} | Esquema: ${objectContextMenu.schemaName}` :
+              `Encabezado: ${objectContextMenu.objectType} | Esquema: ${objectContextMenu.schemaName}`
+            }
+          </div>
+
+          {/* Opción para crear tabla (solo para encabezado de tablas) */}
+          {objectContextMenu.objectType === 'table' && !objectContextMenu.objectName && (
+            <div className="context-menu-item create-table" onClick={handleCreateTable}>
+              <span className="tree-icon">📄</span>
+              <span>Crear Tabla</span>
+            </div>
+          )}
+
+          {/* Opción para crear vista (solo para encabezado de vistas) */}
+          {objectContextMenu.objectType === 'view' && !objectContextMenu.objectName && (
+            <div className="context-menu-item create-view" onClick={handleCreateView}>
+              <span className="tree-icon">👁️</span>
+              <span>Crear Vista</span>
+            </div>
+          )}
+
+          {/* Opción para ver tabla (solo para tablas individuales) */}
+          {objectContextMenu.objectName && objectContextMenu.objectType === 'table' && (
+            <div className="context-menu-item view-table" onClick={handleViewTable}>
+              <span className="tree-icon">📊</span>
+              <span>Ver Tabla</span>
+            </div>
+          )}
+
+          {/* Opción para ver DDL (para elementos individuales) */}
+          {objectContextMenu.objectName && objectContextMenu.objectType !== 'schema' && (
+            <div className="context-menu-item view-ddl" onClick={handleViewDDL}>
+              <span className="tree-icon">📝</span>
+              <span>Ver DDL</span>
+            </div>
+          )}
+
+          {/* Opción para modificar DDL (para elementos individuales) */}
+          {objectContextMenu.objectName && objectContextMenu.objectType !== 'schema' && (
+            <div className="context-menu-item modify-ddl" onClick={handleModifyDDL}>
+              <span className="tree-icon">✏️</span>
+              <span>Modificar DDL</span>
+            </div>
+          )}
+
+
+        </div>
+      )}
+
       {/* Cerrar menú contextual al hacer clic fuera */}
-      {contextMenu.isVisible && (
+      {(contextMenu.isVisible || objectContextMenu.isVisible) && (
         <div
           className="context-menu-backdrop"
-          onClick={() => setContextMenu({ ...contextMenu, isVisible: false })}
+          onClick={() => {
+            setContextMenu({ ...contextMenu, isVisible: false });
+            setObjectContextMenu(prev => ({ ...prev, isVisible: false }));
+          }}
           style={{
             position: 'fixed',
             top: 0,

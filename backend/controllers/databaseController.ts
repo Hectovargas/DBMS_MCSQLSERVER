@@ -505,6 +505,313 @@ class databaseController {
       });
     }
   }
+
+  // DDL Generation Methods
+  async generateTableDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, tableName } = req.params;
+      const { schemaName = '' } = req.query;
+      
+      if (!connectionId || !tableName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y tableName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generateTableDDL(connectionId, tableName, schemaName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL de la tabla',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async generateFunctionDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, functionName } = req.params;
+      const { schemaName = '' } = req.query;
+      
+      if (!connectionId || !functionName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y functionName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generateFunctionDDL(connectionId, functionName, schemaName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL de la función',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async generateTriggerDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, triggerName } = req.params;
+      const { schemaName = '' } = req.query;
+      
+      if (!connectionId || !triggerName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y triggerName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generateTriggerDDL(connectionId, triggerName, schemaName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL del trigger',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async generateProcedureDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, procedureName } = req.params;
+      const { schemaName = '' } = req.query;
+      
+      if (!connectionId || !procedureName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y procedureName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generateProcedureDDL(connectionId, procedureName, schemaName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL del procedimiento',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async generateViewDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, viewName } = req.params;
+      const { schemaName = '' } = req.query;
+      
+      if (!connectionId || !viewName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y viewName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generateViewDDL(connectionId, viewName, schemaName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL de la vista',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async generateIndexDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, indexName } = req.params;
+      const { schemaName = '' } = req.query;
+      
+      if (!connectionId || !indexName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y indexName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generateIndexDDL(connectionId, indexName, schemaName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL del índice',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async generateSequenceDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, sequenceName } = req.params;
+      const { schemaName = '' } = req.query;
+      
+      if (!connectionId || !sequenceName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y sequenceName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generateSequenceDDL(connectionId, sequenceName, schemaName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL de la secuencia',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async generateUserDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, userName } = req.params;
+      
+      if (!connectionId || !userName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y userName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generateUserDDL(connectionId, userName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL del usuario',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  // Object Creation Methods
+  async createTable(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId } = req.params;
+      const tableData = req.body;
+      
+      if (!connectionId) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId es requerido'
+        });
+        return;
+      }
+
+      if (!tableData.tableName || !tableData.columns || !Array.isArray(tableData.columns)) {
+        res.status(400).json({
+          success: false,
+          message: 'tableName y columns (array) son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.createTable(connectionId, tableData);
+      
+      if (result.success) {
+        res.status(201).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al crear tabla',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async createView(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId } = req.params;
+      const viewData = req.body;
+      
+      if (!connectionId) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId es requerido'
+        });
+        return;
+      }
+
+      if (!viewData.viewName || !viewData.query) {
+        res.status(400).json({
+          success: false,
+          message: 'viewName y query son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.createView(connectionId, viewData);
+      
+      if (result.success) {
+        res.status(201).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al crear vista',
+        error: { message: error.message }
+      });
+    }
+  }
 }
 
 module.exports = new databaseController();

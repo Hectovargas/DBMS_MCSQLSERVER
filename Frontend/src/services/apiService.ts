@@ -428,6 +428,195 @@ class ApiService {
       throw error;
     }
   }
+
+  //--------------------------------------------------------------------------------------------------------------------------------------
+  // MÉTODOS PARA GENERAR DDL DE OBJETOS
+  //--------------------------------------------------------------------------------------------------------------------------------------
+
+  // Generar DDL de tabla
+  async generateTableDDL(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de tabla:', { connectionId, tableName, schemaName });
+      
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/tables/${tableName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generateTableDDL:', error);
+      throw error;
+    }
+  }
+
+  // Generar DDL de función
+  async generateFunctionDDL(connectionId: string, functionName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de función:', { connectionId, functionName, schemaName });
+      
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/functions/${functionName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generateFunctionDDL:', error);
+      throw error;
+    }
+  }
+
+  // Generar DDL de trigger
+  async generateTriggerDDL(connectionId: string, triggerName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de trigger:', { connectionId, triggerName, schemaName });
+      
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/triggers/${triggerName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generateTriggerDDL:', error);
+      throw error;
+    }
+  }
+
+  // Generar DDL de procedimiento
+  async generateProcedureDDL(connectionId: string, procedureName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de procedimiento:', { connectionId, procedureName, schemaName });
+      
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/procedures/${procedureName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generateProcedureDDL:', error);
+      throw error;
+    }
+  }
+
+  // Generar DDL de vista
+  async generateViewDDL(connectionId: string, viewName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de vista:', { connectionId, viewName, schemaName });
+      
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/views/${viewName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generateViewDDL:', error);
+      throw error;
+    }
+  }
+
+  // Generar DDL de índice
+  async generateIndexDDL(connectionId: string, indexName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de índice:', { connectionId, indexName, schemaName });
+      
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/indexes/${indexName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generateIndexDDL:', error);
+      throw error;
+    }
+  }
+
+  async generateSequenceDDL(connectionId: string, sequenceName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de secuencia:', { connectionId, sequenceName, schemaName });
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/sequences/${sequenceName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generateSequenceDDL:', error);
+      throw error;
+    }
+  }
+
+  // Generar DDL de usuario
+  async generateUserDDL(connectionId: string, userName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de usuario:', { connectionId, userName, schemaName });
+      
+      const url = `${API_BASE}/${connectionId}/users/${userName}/ddl`;
+      
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generateUserDDL:', error);
+      throw error;
+    }
+  }
+
+  //--------------------------------------------------------------------------------------------------------------------------------------
+  // MÉTODOS PARA CREAR OBJETOS
+  //--------------------------------------------------------------------------------------------------------------------------------------
+
+  // Crear tabla
+  async createTable(connectionId: string, tableData: {
+    schemaName?: string;
+    tableName: string;
+    columns: Array<{
+      name: string;
+      type: string;
+      length?: number;
+      nullable: boolean;
+      defaultValue?: string;
+      primaryKey: boolean;
+      unique: boolean;
+    }>;
+  }): Promise<any> {
+    try {
+      console.log('Creando tabla:', { connectionId, tableData });
+      
+      const response = await fetch(`${API_BASE}/${connectionId}/tables`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tableData),
+      });
+      
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en createTable:', error);
+      throw error;
+    }
+  }
+
+  // Crear vista
+  async createView(connectionId: string, viewData: {
+    schemaName?: string;
+    viewName: string;
+    selectStatement: string;
+    withCheckOption?: boolean;
+  }): Promise<any> {
+    try {
+      console.log('Creando vista:', { connectionId, viewData });
+      
+      const response = await fetch(`${API_BASE}/${connectionId}/views`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(viewData),
+      });
+      
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en createView:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ApiService(); 

@@ -38,6 +38,19 @@ router.get('/:connectionId/schemas/:schemaName/triggers', DatabaseController.get
 router.get('/:connectionId/users', DatabaseController.getUsers);
 router.get('/:connectionId/tablespaces', DatabaseController.getTablespaces);
 
+// Rutas para generar DDL de objetos
+router.get('/:connectionId/tables/:tableName/ddl', DatabaseController.generateTableDDL);
+router.get('/:connectionId/functions/:functionName/ddl', DatabaseController.generateFunctionDDL);
+router.get('/:connectionId/triggers/:triggerName/ddl', DatabaseController.generateTriggerDDL);
+router.get('/:connectionId/procedures/:procedureName/ddl', DatabaseController.generateProcedureDDL);
+router.get('/:connectionId/views/:viewName/ddl', DatabaseController.generateViewDDL);
+router.get('/:connectionId/indexes/:indexName/ddl', DatabaseController.generateIndexDDL);
+router.get('/:connectionId/sequences/:sequenceName/ddl', DatabaseController.generateSequenceDDL);
+router.get('/:connectionId/users/:userName/ddl', DatabaseController.generateUserDDL);
+
+// Rutas para crear objetos
+router.post('/:connectionId/tables', DatabaseController.createTable);
+router.post('/:connectionId/views', DatabaseController.createView);
 
 router.post('/health-check', DatabaseController.checkConnectionsHealth);
 router.post('/close-all', DatabaseController.closeAllConnections);

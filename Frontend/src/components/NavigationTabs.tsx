@@ -7,10 +7,11 @@ import './NavigationTabs.css';
 // ========== INTERFAZ DE PROPS ==========
 // Definimos la interfaz TypeScript para las props que recibe el componente
 interface NavigationTabsProps {
-  activeView: 'welcome' | 'query' | 'table'; // Vista actualmente activa
-  onViewChange: (view: 'welcome' | 'query' | 'table') => void; // Función para cambiar de vista
+  activeView: 'welcome' | 'query' | 'table' | 'object' ; // Vista actualmente activa
+  onViewChange: (view: 'welcome' | 'query' | 'table' | 'object' ) => void; // Función para cambiar de vista
   hasConnection: boolean; // Si hay una conexión de base de datos activa
   hasTable: boolean; // Si hay una tabla seleccionada
+  hasObject: boolean; // Si hay un objeto seleccionado
 }
 
 // ========== COMPONENTE PRINCIPAL ==========
@@ -18,7 +19,8 @@ const NavigationTabs: React.FC<NavigationTabsProps> = ({
   activeView, // Vista actualmente activa
   onViewChange, // Función para cambiar de vista
   hasConnection, // Si hay conexión activa
-  hasTable // Si hay tabla seleccionada
+  hasTable, // Si hay tabla seleccionada
+  hasObject // Si hay objeto seleccionado
 }) => {
   // ========== RENDERIZADO DEL COMPONENTE ==========
   return (
@@ -48,6 +50,15 @@ const NavigationTabs: React.FC<NavigationTabsProps> = ({
         disabled={!hasTable} // Deshabilitado si no hay tabla seleccionada
       >
         <span className="nav-icon table-details-icon"></span> Detalles de Tabla
+      </button>
+
+      {/* ========== PESTAÑA: DDL DE OBJETOS ========== */}
+      <button
+        className={`nav-tab ${activeView === 'object' ? 'active' : ''}`} // Clase activa si es la vista actual
+        onClick={() => onViewChange('object')} // Cambia a la vista de DDL de objetos
+        disabled={!hasObject} // Deshabilitado si no hay objeto seleccionado
+      >
+        <span className="nav-icon object-icon"></span> DDL de Objeto
       </button>
     </div>
   );

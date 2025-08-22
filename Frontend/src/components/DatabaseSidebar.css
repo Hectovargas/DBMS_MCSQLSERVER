@@ -872,3 +872,77 @@
   background-color: var(--border-color);
   opacity: 0.5;
 }
+
+/* ========== ELEMENTOS CLICKEABLES ========== */
+.clickeable-item {
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.clickeable-item:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  color: var(--hover-text, #1f2937);
+}
+
+.clickeable-item:active {
+  transform: translateY(1px);
+}
+
+/* ========== TEMA OSCURO ========== */
+@media (prefers-color-scheme: dark) {
+  .clickeable-item:hover {
+    background-color: var(--hover-bg-dark, #4b5563);
+    color: var(--hover-text-dark, #f9fafb);
+  }
+}
+
+/* ========== MENÚ CONTEXTUAL DE OBJETOS ========== */
+.object-context-menu {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  padding: 4px;
+}
+
+.object-context-menu .context-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.object-context-menu .context-menu-item:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.object-context-menu .context-menu-item.create-table {
+  color: #4CAF50;
+}
+
+.object-context-menu .context-menu-item.create-view {
+  color: #2196F3;
+}
+
+.object-context-menu .context-menu-item.view-table {
+  color: #4CAF50;
+}
+
+.object-context-menu .context-menu-item.view-ddl {
+  color: #FF9800;
+}
+
+.object-context-menu .context-menu-item.modify-ddl {
+  color: #9C27B0;
+}
+
+.object-context-menu .context-menu-item span:last-child {
+  margin-left: 8px;
+  font-weight: 500;
+}
