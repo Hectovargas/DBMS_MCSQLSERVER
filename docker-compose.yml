@@ -1,3 +1,4 @@
+
 services:
   firebird:
     image: jacobalberty/firebird:3.0
@@ -7,12 +8,43 @@ services:
       FIREBIRD_USER: SYSDBA
       FIREBIRD_PASSWORD: masterkey
       ISC_PASSWORD: masterkey
+      EnableLegacyClientAuth: true
     ports:
-      - "3051:3050"
+      - "3050:3050"
     volumes:
       - firebird_data:/firebird/data
-      - ./firebird.conf:/firebird/etc/firebird.conf:ro
+    restart: unless-stopped
+  firebird1:
+    image: jacobalberty/firebird:3.0
+    container_name: firebird-db1
+    environment:
+      FIREBIRD_DATABASE: testdb1.fdb
+      FIREBIRD_USER: SYSDBA
+      FIREBIRD_PASSWORD: masterkey
+      ISC_PASSWORD: masterkey
+      EnableLegacyClientAuth: true
+    ports:
+      - "3051:3050" 
+    volumes:
+      - firebird1_data:/firebird/data
+    restart: unless-stopped
+
+  firebird2:
+    image: jacobalberty/firebird:3.0
+    container_name: firebird-db2
+    environment:
+      FIREBIRD_DATABASE: testdb2.fdb
+      FIREBIRD_USER: SYSDBA
+      FIREBIRD_PASSWORD: masterkey
+      ISC_PASSWORD: masterkey
+      EnableLegacyClientAuth: true
+    ports:
+      - "3052:3050"  
+    volumes:
+      - firebird2_data:/firebird/data
     restart: unless-stopped
 
 volumes:
+  firebird1_data:
+  firebird2_data:
   firebird_data:

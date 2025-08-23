@@ -1,19 +1,6 @@
 const express = require('express');
 const databaseManager = require('../services/databaseManager');
 
-interface ConnectionParams {
-  connectionId: string;
-}
-
-interface TableParams extends ConnectionParams {
-  tableName: string;
-  schemaName?: string;
-}
-
-interface SchemaParams extends ConnectionParams {
-  schemaName: string;
-}
-
 class databaseController {
 
   async testConnection(req: any, res: any): Promise<void> {
@@ -760,7 +747,12 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.createTable(connectionId, tableData);
+      const result = await databaseManager.createTable({
+        connectionId,
+        schemaName: tableData.schemaName || '',
+        tableName: tableData.tableName,
+        columns: tableData.columns
+      });
       
       if (result.success) {
         res.status(201).json(result);

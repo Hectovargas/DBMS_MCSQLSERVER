@@ -21,7 +21,7 @@ router.get('/:connectionId/schemas/tables', DatabaseController.getTables);
 router.get('/:connectionId/schemas/:schemaName/tables', DatabaseController.getTables);
 router.get('/:connectionId/tables/:tableName/columns', DatabaseController.getTableColumns);
 
-// Nuevos endpoints de metadatos
+
 router.get('/:connectionId/schemas/views', DatabaseController.getViews);
 router.get('/:connectionId/schemas/:schemaName/views', DatabaseController.getViews);
 router.get('/:connectionId/schemas/packages', DatabaseController.getPackages);
@@ -38,7 +38,7 @@ router.get('/:connectionId/schemas/:schemaName/triggers', DatabaseController.get
 router.get('/:connectionId/users', DatabaseController.getUsers);
 router.get('/:connectionId/tablespaces', DatabaseController.getTablespaces);
 
-// Rutas para generar DDL de objetos
+
 router.get('/:connectionId/tables/:tableName/ddl', DatabaseController.generateTableDDL);
 router.get('/:connectionId/functions/:functionName/ddl', DatabaseController.generateFunctionDDL);
 router.get('/:connectionId/triggers/:triggerName/ddl', DatabaseController.generateTriggerDDL);
@@ -48,8 +48,17 @@ router.get('/:connectionId/indexes/:indexName/ddl', DatabaseController.generateI
 router.get('/:connectionId/sequences/:sequenceName/ddl', DatabaseController.generateSequenceDDL);
 router.get('/:connectionId/users/:userName/ddl', DatabaseController.generateUserDDL);
 
-// Rutas para crear objetos
+
 router.post('/:connectionId/tables', DatabaseController.createTable);
+
+// Endpoint temporal para debug
+router.get('/debug/connections', (req: any, res: any) => {
+  const databaseManager = require('../services/databaseManager');
+  res.json({
+    connections: Object.keys(databaseManager.conexiones || {}),
+    connectionDetails: databaseManager.conexiones || {}
+  });
+});
 router.post('/:connectionId/views', DatabaseController.createView);
 
 router.post('/health-check', DatabaseController.checkConnectionsHealth);

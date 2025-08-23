@@ -18,12 +18,41 @@
   border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
 }
 
+/* ========== INFORMACIÓN DEL ENCABEZADO ========== */
+.header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 /* ========== TÍTULO DEL EDITOR ========== */
 .query-editor-header h3 {
   margin: 0; /* Sin márgenes */
   color: var(--text-primary); /* Color del texto usando variable CSS */
   font-size: 18px; /* Tamaño de la fuente */
   font-weight: 600; /* Peso de la fuente */
+}
+
+/* ========== INFORMACIÓN DE CONEXIÓN ========== */
+.connection-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.connection-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.connection-name {
+  color: var(--primary-color);
+  font-weight: 600;
+  background: var(--primary-bg);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
 }
 
 /* ========== BOTONES DE ACCIÓN ========== */

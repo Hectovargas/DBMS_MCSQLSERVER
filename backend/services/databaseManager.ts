@@ -187,20 +187,24 @@ class databaseManager {
 
     //--------------------------------------------------------------------------------------------------------------------------------------
 
-    // Crea la configuración de la conexion que se usara en el form de conexion. 
     private crearConfiguracionFirebird(config: FirebirdConnection): any {
         return {
-            host: config.host, //host de siempre
-            database: '/firebird/data/' + config.database, //ruta del archivo de la base de datos
-            port: config.port || 3050,  //puerto
-            user: config.username || 'SYSDBA', //usuario
-            password: config.password || 'masterkey', //contraseña
-            lowercase_keys: config.options?.lowercase_keys ?? false, //en caso de que en las opciones el nombre de las cosas se devuelvan en minusculas 
-            role: config.options?.role, //en caso de que haya roles de usuario especifico
-            pageSize: config.options?.pageSize || 4096, //tamaño de pagina
-            retryConnectionInterval: config.options?.retryConnectionInterval || 1000, //tiempo de intervalos de reconexion automatica
-            blobAsText: config.options?.blobAsText ?? false, //si los blob se devulevn como text o binario
-            encoding: config.options?.encoding || 'UTF-8' //el encoding
+            host: config.host,
+            database: '/firebird/data/' + config.database,
+            port: config.port || 3050,
+            user: config.username || 'SYSDBA',
+            password: config.password || 'masterkey',
+            lowercase_keys: config.options?.lowercase_keys ?? false,
+            role: config.options?.role,
+            pageSize: config.options?.pageSize || 4096,
+            retryConnectionInterval: config.options?.retryConnectionInterval || 1000,
+            blobAsText: config.options?.blobAsText ?? false,
+            encoding: config.options?.encoding || 'UTF-8',
+            
+            WireCrypt: 'Disabled',
+            wireCompression: false,
+            legacy_auth: true,
+            auth_plugin: 'Legacy_Auth'
         };
     }
 
@@ -208,19 +212,20 @@ class databaseManager {
 
     async testConnection(config: FirebirdConnection): Promise<FirebirdConnectionResponse> {
         try {
-
-            //configuracion de la conexion que se le va a hacer (desde el formconexionc del frontend)
             const connectionConfig = {
                 host: config.host,
                 database: '/firebird/data/' + config.database,
                 port: config.port || 3050,
                 user: config.username || 'SYSDBA',
-                password: config.password || 'masterkey'
+                password: config.password || 'masterkey',
+                
+                WireCrypt: 'Disabled',
+                wireCompression: false,
+                legacy_auth: true,
+                auth_plugin: 'Legacy_Auth'
             };
-
+    
             return new Promise((resolve, reject) => {
-                //se usa attach de node-firebird ya que me es util al solo querer probar la conexion, directa y temporal
-                //la sintaxis es attach(config, callback)
                 Firebird.attach(connectionConfig, (err: any, db: any) => {
                     if (err) {
                         resolve({
@@ -230,11 +235,8 @@ class databaseManager {
                         });
                         return;
                     }
-
-                    //se usa db.query del callback que dio el attach a la conexion,
-                    // ya que el callback o nos devuleve un error o la base de datos (por asi decirlo) (err, db)
+    
                     db.query('SELECT 1 as test FROM RDB$DATABASE', (err: any, result: any) => {
-                        //el query simplemente le pide una constante a la base de datos, si la devuelve funca, si no no.
                         if (err) {
                             db.detach();
                             resolve({
@@ -244,13 +246,13 @@ class databaseManager {
                             });
                             return;
                         }
-
+    
                         try {
                             db.detach();
                         } catch (detachError) {
                             console.error('Error al cerrar conexion:', detachError);
                         }
-
+    
                         resolve({
                             success: true,
                             message: 'Conexión exitosa'
@@ -258,7 +260,7 @@ class databaseManager {
                     });
                 });
             });
-
+    
         } catch (error: any) {
             return {
                 success: false,
@@ -512,16 +514,6 @@ class databaseManager {
 
     //--------------------------------------------------------------------------------------------------------------------------------------
 
-    /*
-    Esta funcion es simple pero la mas importante, esta diseñada para ejecutar querys en la base de datos
-    un ejemplo de uso seria 
-    -await executeQuery("conn_123", "SELECT * FROM users");
-
-   - await executeQuery("conn_123", "SELECT * FROM users WHERE id = ?", [42]);
-
-   - await executeQuery("conn_123", "INSERT INTO users (name) VALUES (?)", ["efrain"]);
-    */
-
 
     async executeQuery(connectionId: string, query: string, parametrers?: any): Promise<any> {
         try {
@@ -532,15 +524,21 @@ class databaseManager {
 
             const connection = this.conexiones[connectionId];
 
+
             if (!connection.isConnected || !connection.pool) {
-                throw new Error('La conexion no esta activa');
+                console.log(`Intentando reconectar a la base de datos: ${connectionId}`);
+                const reconnectResult = await this.connectToDatabase(connectionId);
+                if (!reconnectResult.success) {
+                    console.error(`Error al reconectar: ${reconnectResult.message}`);
+                    throw new Error(`La conexion no esta activa y no se pudo reconectar: ${reconnectResult.message}`);
+                }
+                console.log(`Reconexión exitosa para: ${connectionId}`);
             }
 
 
             connection.lastUsed = new Date();
 
             return new Promise((resolve, reject) => {
-                //agarramos el pool de la conexion de donde se hara la consulta
                 connection.pool.get((err: any, db: any) => {
                     if (err) {
                         resolve({
@@ -550,23 +548,19 @@ class databaseManager {
                         return;
                     }
 
-                    // Configurar para que los BLOB se devuelvan como texto
-                    db.query('SET BLOB_DISPLAY_DEFAULT = TEXT', (err: any) => {
-                        if (err) {
-                            console.log('Warning: No se pudo configurar BLOB_DISPLAY_DEFAULT:', err.message);
-                        }
-                    });
 
-                    //registraos el comienzo de la consultaa
+                    db.query('SET BLOB_DISPLAY_DEFAULT = TEXT', (err: any) => {});
+
+
                     const startTime = Date.now();
 
-                    //ejecutamos la consulta en la base de datos obtenida del pool
+
                     db.query(query, parametrers || [], (err: any, result: any) => {
 
-                        //registramos la duracion de la consulta
+     
                         const executionTime = Date.now() - startTime;
 
-                        //si la consulta no es valisda
+
                         if (err) {
                             db.detach();
                             resolve({
@@ -576,30 +570,6 @@ class databaseManager {
                             return;
                         }
 
-                        /*
-                        esta parte se usa para procesar las columnas en caso de que sea un select
-                            Consulta SQL: "SELECT ID, NAME, ACTIVE FROM USERS"
-                                                    ↓
-                            la base de datos  devuelve: [
-                                { ID: 1, NAME: "Juan", ACTIVE: true },
-                                { ID: 2, NAME: "andre", ACTIVE: false }
-                            ]
-                                                    ↓
-                            result[0] = { ID: 1, NAME: "Juan", ACTIVE: true }
-                                                    ↓
-                            Object.keys(result[0]) = ["ID", "NAME", "ACTIVE"]
-                                                    ↓
-                            .map() procesa cada key:
-                                "ID" → { name: "ID", type: typeof 1 } → { name: "ID", type: "number" }
-                                "NAME" → { name: "NAME", type: typeof "Juan" } → { name: "NAME", type: "string" }
-                                "ACTIVE" → { name: "ACTIVE", type: typeof true } → { name: "ACTIVE", type: "boolean" }
-                                                    ↓
-                            columns = [
-                                { name: "ID", type: "number" },
-                                { name: "NAME", type: "string" },
-                                { name: "ACTIVE", type: "boolean" }
-                            ]
-                        */
                         let columns: { name: string; type: string }[] = [];
                         if (result && result.length > 0) {
                             columns = Object.keys(result[0]).map(key => ({ name: key, type: typeof result[0][key] }));
@@ -634,24 +604,47 @@ class databaseManager {
     //--------------------------------------------------------------------------------------------------------------------------------------
 
     async getSchemas(connectionId: string): Promise<any> {
-        const query = `
-          SELECT DISTINCT 
-            TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) as SCHEMA_NAME
-          FROM RDB$RELATIONS 
-          WHERE RDB$VIEW_BLR IS NULL 
-            AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
-          ORDER BY RDB$OWNER_NAME
-        `;
+        try {
+            // Verificar la salud de la conexión antes de proceder
+            const isHealthy = await this.checkConnectionHealth(connectionId);
+            if (!isHealthy) {
+                console.log(`Conexión ${connectionId} no está saludable, intentando reconectar...`);
+                const reconnectResult = await this.connectToDatabase(connectionId);
+                if (!reconnectResult.success) {
+                    return {
+                        success: false,
+                        message: 'No se pudo establecer conexión con la base de datos',
+                        error: { message: reconnectResult.message }
+                    };
+                }
+            }
 
-        const result = await this.executeQuery(connectionId, query);
+            const query = `
+              SELECT DISTINCT 
+                TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) as SCHEMA_NAME
+              FROM RDB$RELATIONS 
+              WHERE RDB$VIEW_BLR IS NULL 
+                AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+              ORDER BY RDB$OWNER_NAME
+            `;
 
-        if (result.success && this.conexiones[connectionId]) {
-            this.conexiones[connectionId].isConnected = true;
-            this.conexiones[connectionId].config.isActive = true;
-            this.conexiones[connectionId].lastUsed = new Date();
+            const result = await this.executeQuery(connectionId, query);
+
+            if (result.success && this.conexiones[connectionId]) {
+                this.conexiones[connectionId].isConnected = true;
+                this.conexiones[connectionId].config.isActive = true;
+                this.conexiones[connectionId].lastUsed = new Date();
+            }
+
+            return result;
+        } catch (error: any) {
+            console.error(`Error en getSchemas para conexión ${connectionId}:`, error);
+            return {
+                success: false,
+                message: 'Error al obtener esquemas',
+                error: { message: error.message }
+            };
         }
-
-        return result;
     }
 
     //--------------------------------------------------------------------------------------------------------------------------------------
@@ -840,16 +833,6 @@ class databaseManager {
 
     //--------------------------------------------------------------------------------------------------------------------------------------
 
-    async getTablespaces(connectionId: string): Promise<any> {
-        return {
-            success: true,
-            data: [],
-            message: 'Tablespaces no aplica en Firebird 3.0'
-        };
-    }
-
-    //--------------------------------------------------------------------------------------------------------------------------------------
-
     async getTablesColumns(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
         const query =
             `SELECT 
@@ -904,15 +887,13 @@ class databaseManager {
             ORDER BY RF.RDB$FIELD_POSITION                          
         `;
     
-        //Armo el array de parámetros según si incluyo esquema o no
         const params = schemaName && schemaName.trim() !== ''
             ? [tableName, schemaName]                               
             : [tableName];                                          
     
-        //Ejecuto la consulta usando la función executeQuery
+
         const result = await this.executeQuery(connectionId, query, params);
     
-        //Si la consulta fue exitosa, marco la conexión como activa
         if (result.success && this.conexiones[connectionId]) {
             this.conexiones[connectionId].isConnected = true;       
             this.conexiones[connectionId].config.isActive = true;  
@@ -921,6 +902,30 @@ class databaseManager {
     
         return result; 
     }
+    //--------------------------------------------------------------------------------------------------------------------------------------
+
+    // Verifica si una conexión está activa y funcional
+    async checkConnectionHealth(connectionId: string): Promise<boolean> {
+        try {
+            if (!this.conexiones[connectionId]) {
+                return false;
+            }
+
+            const connection = this.conexiones[connectionId];
+            
+            if (!connection.isConnected || !connection.pool) {
+                return false;
+            }
+
+            // Intentar hacer una consulta simple para verificar la conexión
+            const result = await this.executeQuery(connectionId, 'SELECT 1 as test FROM RDB$DATABASE');
+            return result.success;
+        } catch (error) {
+            console.error(`Error al verificar salud de conexión ${connectionId}:`, error);
+            return false;
+        }
+    }
+
     //--------------------------------------------------------------------------------------------------------------------------------------
 
     private generateConnectionId(): string {
@@ -941,9 +946,13 @@ class databaseManager {
         try {
 
             const { connectionId, schemaName, tableName, columns } = params;
+            
+            console.log('createTable called with params:', { connectionId, schemaName, tableName, columnsCount: columns?.length });
+            console.log('Available connections:', Object.keys(this.conexiones));
 
             // si la conexión existe
             if (!this.conexiones[connectionId]) {
+                console.log('Connection not found:', connectionId);
                 return {
                     success: false,
                     message: 'Conexión no encontrada'
@@ -999,9 +1008,9 @@ class databaseManager {
     private generateCreateTableSQL(schemaName: string, tableName: string, columns: ColumnDefinition[]): string {
 
         const columnDefinitions = columns.map(col => {
-            let definition = `"${col.name}" ${col.type}`;
+            let definition = `${col.name.toUpperCase()} ${col.type.toUpperCase()}`;
 
-            if (col.length && (col.type === 'VARCHAR' || col.type === 'CHAR' || col.type === 'DECIMAL' || col.type === 'NUMERIC')) {
+            if (col.length && (col.type.toUpperCase() === 'VARCHAR' || col.type.toUpperCase() === 'CHAR' || col.type.toUpperCase() === 'DECIMAL' || col.type.toUpperCase() === 'NUMERIC')) {
                 definition += `(${col.length})`;
             }
 
@@ -1023,18 +1032,16 @@ class databaseManager {
             return definition;
         });
 
-        const primaryKeys = columns.filter(col => col.primaryKey).map(col => col.name);
+        const primaryKeys = columns.filter(col => col.primaryKey).map(col => col.name.toUpperCase());
 
-        let sql = `CREATE TABLE `;
-        if (schemaName && schemaName.trim() !== '') {
-            sql += `"${schemaName}".`;
-        }
-        sql += `"${tableName}" (\n`;
+        // En Firebird, es mejor no especificar el esquema en el CREATE TABLE
+        // El esquema se maneja a través de la conexión
+        let sql = `CREATE TABLE ${tableName.toUpperCase()} (\n`;
         sql += `  ${columnDefinitions.join(',\n  ')}`;
 
         // Agregar primary key si hay
         if (primaryKeys.length > 0) {
-            sql += `,\n  PRIMARY KEY (${primaryKeys.map(pk => `"${pk}"`).join(', ')})`;
+            sql += `,\n  PRIMARY KEY (${primaryKeys.join(', ')})`;
         }
 
         sql += '\n);';
@@ -1045,39 +1052,38 @@ class databaseManager {
     //--------------------------------------------------------------------------------------------------------------------------------------
 
     private formatDefaultValue(value: string, type: string): string {
-        // Si el valor está vacío o es undefined, no agregar DEFAULT
+
         if (!value || value.trim() === '') {
             return '';
         }
 
-        // Para tipos de texto, fecha y tiempo, agregar comillas
-        if (type.includes('CHAR') || type.includes('TEXT') ||
-            type.includes('DATE') || type.includes('TIME') ||
-            type.includes('BLOB') || type.includes('CLOB')) {
+        const upperType = type.toUpperCase();
+
+        if (upperType.includes('CHAR') || upperType.includes('TEXT') ||
+            upperType.includes('DATE') || upperType.includes('TIME') ||
+            upperType.includes('BLOB') || upperType.includes('CLOB')) {
             return `'${value.replace(/'/g, "''")}'`;
         }
 
-        // Para tipos numéricos, verificar que sea un número válido
-        if (type.includes('INT') || type.includes('DECIMAL') || 
-            type.includes('NUMERIC') || type.includes('FLOAT') || 
-            type.includes('DOUBLE')) {
+        if (upperType.includes('INT') || upperType.includes('DECIMAL') || 
+            upperType.includes('NUMERIC') || upperType.includes('FLOAT') || 
+            upperType.includes('DOUBLE') || upperType.includes('SMALLINT') ||
+            upperType.includes('BIGINT')) {
             const numValue = parseFloat(value);
             if (isNaN(numValue)) {
-                return `'${value}'`; // Si no es número, tratarlo como string
+                return `'${value.replace(/'/g, "''")}'`; 
             }
             return value;
         }
 
-        // Para booleanos
-        if (type.includes('BOOLEAN')) {
+        if (upperType.includes('BOOLEAN')) {
             const boolValue = value.toLowerCase();
             if (boolValue === 'true' || boolValue === 'false') {
                 return boolValue;
             }
-            return `'${value}'`;
+            return `'${value.replace(/'/g, "''")}'`;
         }
 
-        // Para otros tipos, agregar comillas por seguridad
         return `'${value.replace(/'/g, "''")}'`;
     }
 
@@ -1203,10 +1209,12 @@ class databaseManager {
             throw new Error('La consulta debe comenzar con SELECT');
         }
 
-        let sql = `CREATE VIEW ${schemaName ? `${schemaName}.` : ''}"${viewName}"`;
+        // En Firebird, es mejor no especificar el esquema en el CREATE VIEW
+        // El esquema se maneja a través de la conexión
+        let sql = `CREATE VIEW ${viewName.toUpperCase()}`;
 
         if (columnNames && columnNames.length > 0) {
-            sql += ` (${columnNames.map(name => `"${name}"`).join(', ')})`;
+            sql += ` (${columnNames.map(name => name.toUpperCase()).join(', ')})`;
         }
 
         sql += ` AS\n${cleanedSelectQuery}`;
@@ -1322,9 +1330,8 @@ class databaseManager {
                 };
             }
 
-            console.log('generateFunctionDDL called with:', { connectionId, functionName, schemaName });
 
-            // Consulta simple y directa
+
             const query = `
                 SELECT 
                     TRIM(R.RDB$FUNCTION_NAME) AS FUNCTION_NAME,
@@ -1342,11 +1349,8 @@ class databaseManager {
             `;
 
             const params = [functionName];
-            console.log('Function DDL query:', query);
-            console.log('Function DDL params:', params);
             
             const result = await this.executeQuery(connectionId, query, params);
-            console.log('Function DDL query result:', result);
 
             if (!result.success || !result.data || result.data.length === 0) {
                 return {
@@ -1384,7 +1388,6 @@ class databaseManager {
                 };
             }
 
-            console.log('generateTriggerDDL called with:', { connectionId, triggerName, schemaName });
 
             const query = `
                 SELECT 
@@ -1404,11 +1407,9 @@ class databaseManager {
             `;
 
             const params = [triggerName];
-            console.log('Trigger DDL query:', query);
-            console.log('Trigger DDL params:', params);
             
             const result = await this.executeQuery(connectionId, query, params);
-            console.log('Trigger DDL query result:', result);
+
 
             if (!result.success || !result.data || result.data.length === 0) {
                 return {
@@ -1446,7 +1447,6 @@ class databaseManager {
                 };
             }
 
-            console.log('generateProcedureDDL called with:', { connectionId, procedureName, schemaName });
 
             const query = `
                 SELECT 
@@ -1465,11 +1465,9 @@ class databaseManager {
             `;
 
             const params = [procedureName];
-            console.log('Procedure DDL query:', query);
-            console.log('Procedure DDL params:', params);
             
             const result = await this.executeQuery(connectionId, query, params);
-            console.log('Procedure DDL query result:', result);
+
 
             if (!result.success || !result.data || result.data.length === 0) {
                 return {
@@ -1507,9 +1505,6 @@ class databaseManager {
                 };
             }
 
-            console.log('generateViewDDL called with:', { connectionId, viewName, schemaName });
-
-            // Consulta simple y directa
             const query = `
                 SELECT 
                     TRIM(R.RDB$RELATION_NAME) AS VIEW_NAME,
@@ -1523,11 +1518,8 @@ class databaseManager {
             `;
 
             const params = [viewName];
-            console.log('View DDL query:', query);
-            console.log('View DDL params:', params);
             
             const result = await this.executeQuery(connectionId, query, params);
-            console.log('View DDL query result:', result);
 
             if (!result.success || !result.data || result.data.length === 0) {
                 return {
@@ -1537,7 +1529,6 @@ class databaseManager {
             }
 
             const view = result.data[0];
-            console.log('View data received:', view);
             
             const ddl = this.buildViewDDL(view);
 
@@ -1563,7 +1554,7 @@ class databaseManager {
             if (!this.conexiones[connectionId]) {
                 return {
                     success: false,
-                    message: 'Conexión no encontrada'
+                    message: 'ConexiOn no encontrada'
                 };
             }
 
@@ -1589,7 +1580,7 @@ class databaseManager {
             if (!result.success || !result.data || result.data.length === 0) {
                 return {
                     success: false,
-                    message: 'Índice no encontrado'
+                    message: 'Indice no encontrado'
                 };
             }
 
@@ -1669,18 +1660,74 @@ class databaseManager {
     //--------------------------------------------------------------------------------------------------------------------------------------
 
     private buildTableDDL(tableName: string, schemaName: string, columns: any[], indexes: any[], constraints: any[]): string {
-        let ddl = `CREATE TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}" (\n`;
+        // Firebird no necesita el esquema en el CREATE TABLE si es SYSDBA
+        const schemaPrefix = schemaName && schemaName !== 'SYSDBA' ? `"${schemaName}".` : '';
+        let ddl = `CREATE TABLE ${schemaPrefix}"${tableName}" (\n`;
 
 
         const columnDefinitions = columns.map(col => {
             let definition = `  "${col.name}" ${this.getFirebirdDataType(col)}`;
 
-            if (!col.isNullable) {
+            // Si la columna tiene valor por defecto, no puede ser NOT NULL
+            // Si no tiene valor por defecto y es NOT NULL, mantener NOT NULL
+            if (!col.isNullable && !col.defaultValue) {
                 definition += ' NOT NULL';
             }
 
             if (col.defaultValue) {
-                definition += ` DEFAULT ${col.defaultValue}`;
+                // Manejar valores por defecto específicos de Firebird
+                let defaultValue = col.defaultValue;
+                const dataType = this.getFirebirdDataType(col);
+                
+                // Limpiar comillas extra si las hay
+                if (typeof defaultValue === 'string') {
+                    defaultValue = defaultValue.replace(/^['"]+|['"]+$/g, '');
+                }
+                
+                // Convertir valores booleanos
+                if (defaultValue === 'TRUE' || defaultValue === 'true') {
+                    defaultValue = '1';
+                } else if (defaultValue === 'FALSE' || defaultValue === 'false') {
+                    defaultValue = '0';
+                }
+                
+                // Manejar CURRENT_TIMESTAMP - Firebird no soporta esta función directamente
+                if (defaultValue === 'CURRENT_TIMESTAMP') {
+                    // Para Firebird, usar NULL en lugar de CURRENT_TIMESTAMP
+                    defaultValue = 'NULL';
+                }
+                
+                // Manejar NULL como string
+                if (defaultValue === 'NULL' || defaultValue === 'null') {
+                    defaultValue = 'NULL';
+                }
+                
+                // Para campos VARCHAR/CHAR, TODOS los valores deben estar entre comillas
+                if (dataType.startsWith('VARCHAR') || dataType.startsWith('CHAR')) {
+                    if (defaultValue !== 'NULL') {
+                        defaultValue = `'${defaultValue}'`;
+                    }
+                }
+                
+                // Para BLOB, también poner entre comillas si es string
+                if (dataType === 'BLOB' && typeof defaultValue === 'string' && defaultValue !== 'NULL') {
+                    defaultValue = `'${defaultValue}'`;
+                }
+                
+                // Para campos numéricos, asegurar que no tengan comillas
+                if (dataType.includes('INT') || dataType.includes('SMALLINT') || dataType.includes('BIGINT') || 
+                    dataType.includes('FLOAT') || dataType.includes('DOUBLE')) {
+                    if (typeof defaultValue === 'string' && defaultValue.startsWith("'")) {
+                        defaultValue = defaultValue.replace(/^['"]+|['"]+$/g, '');
+                    }
+                }
+                
+                // Para campos TIMESTAMP, usar NULL por defecto
+                if (dataType === 'TIMESTAMP') {
+                    defaultValue = 'NULL';
+                }
+                
+                definition += ` DEFAULT ${defaultValue}`;
             }
 
             return definition;
@@ -1690,9 +1737,7 @@ class databaseManager {
 
 
         const primaryKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'PRIMARY KEY');
-        const foreignKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'FOREIGN KEY');
         const uniqueKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'UNIQUE');
-        const checkConstraints = constraints.filter(c => c.CONSTRAINT_TYPE === 'CHECK');
 
         if (primaryKeys.length > 0) {
             ddl += ',\n  PRIMARY KEY (';
@@ -1715,9 +1760,11 @@ class databaseManager {
 
         for (const index of indexes) {
             if (index.INDEX_NAME && !index.INDEX_NAME.startsWith('RDB$')) {
-                ddl += `\nCREATE ${index.IS_UNIQUE ? 'UNIQUE ' : ''}INDEX "${index.INDEX_NAME}" ON "${schemaName ? `${schemaName}.` : ''}"${tableName}" (`;
-
-                ddl += '/* campos del índice */';
+                const indexSchemaPrefix = schemaName && schemaName !== 'SYSDBA' ? `"${schemaName}".` : '';
+                ddl += `\nCREATE ${index.IS_UNIQUE ? 'UNIQUE ' : ''}INDEX "${index.INDEX_NAME}" ON ${indexSchemaPrefix}"${tableName}" (`;
+                
+                // Aquí podrías agregar los campos del índice si los tienes disponibles
+                ddl += '/* campos del índice - especificar manualmente */';
                 ddl += ');\n';
             }
         }
@@ -1730,10 +1777,8 @@ class databaseManager {
     private buildFunctionDDL(func: any): string {
         let ddl = `CREATE FUNCTION ${func.OWNER_NAME ? `${func.OWNER_NAME}.` : ''}"${func.FUNCTION_NAME}" `;
         
-        // Agregar parámetros si los hay
         ddl += '()\n';
-        
-        // Agregar tipo de retorno
+
         if (func.RETURN_ARGUMENT) {
             ddl += `RETURNS ${this.getFirebirdDataType({ dataType: func.RETURN_ARGUMENT })}\n`;
         }
@@ -1776,7 +1821,6 @@ class databaseManager {
     private buildProcedureDDL(proc: any): string {
         let ddl = `CREATE PROCEDURE "${proc.PROCEDURE_NAME}" `;
         
-        // Agregar parámetros si los hay
         ddl += '()\n';
         
         ddl += 'AS\n';
@@ -1929,10 +1973,6 @@ class databaseManager {
 
     private buildSequenceDDL(seq: any): string {
         let ddl = `CREATE SEQUENCE "${seq.SEQUENCE_NAME}"`;
-        
-        // Por ahora solo creamos la secuencia básica
-        // En el futuro se podría agregar START WITH, INCREMENT BY, etc.
-        
         return ddl;
     }
 
@@ -1940,7 +1980,7 @@ class databaseManager {
 
     private buildIndexDDL(index: any, fields: any[]): string {
         let ddl = `CREATE ${index.IS_UNIQUE ? 'UNIQUE ' : ''}INDEX "${index.INDEX_NAME}" `;
-        ddl += `ON ${index.RELATION_NAME}" (`;
+        ddl += `ON ${index.RELATION_NAME} (`;
         if (fields.length > 0) {
             ddl += fields.map(f => `"${f.FIELD_NAME}"`).join(', ');
         } else {
@@ -1964,19 +2004,19 @@ class databaseManager {
         switch (typeCode) {
             case 7: type = 'SMALLINT'; break;
             case 8: type = 'INTEGER'; break;
-            case 9: type = 'QUAD'; break;
+            case 9: type = 'BIGINT'; break; // QUAD se mapea a BIGINT
             case 10: type = 'FLOAT'; break;
-            case 11: type = 'D_FLOAT'; break;
+            case 11: type = 'DOUBLE PRECISION'; break; // D_FLOAT se mapea a DOUBLE PRECISION
             case 12: type = 'DATE'; break;
             case 13: type = 'TIME'; break;
             case 14: type = 'CHAR'; break;
-            case 16: type = 'INT64'; break;
+            case 16: type = 'BIGINT'; break; // INT64 se mapea a BIGINT
             case 27: type = 'DOUBLE PRECISION'; break;
             case 35: type = 'TIMESTAMP'; break;
             case 37: type = 'VARCHAR'; break;
-            case 40: type = 'CSTRING'; break;
+            case 40: type = 'VARCHAR'; break; // CSTRING se mapea a VARCHAR
             case 261: type = 'BLOB'; break;
-            default: type = 'UNKNOWN'; break;
+            default: type = 'VARCHAR(255)'; break; // UNKNOWN se mapea a VARCHAR por defecto
         }
 
         if ((type === 'CHAR' || type === 'VARCHAR') && maxLength) {
@@ -2098,369 +2138,6 @@ class databaseManager {
         }
     }
 
-    async dropTable(connectionId: string, tableName: string, schemaName: string = '', cascade: boolean = false): Promise<TableOperationResponse> {
-        try {
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-            const existsResult = await this.checkTableExists(connectionId, schemaName, tableName);
-            if (!existsResult.success || !existsResult.exists) {
-                return {
-                    success: false,
-                    message: `La tabla ${tableName} no existe`
-                };
-            }
-
-            const sql = `DROP TABLE ${schemaName ? `${schemaName}.` : ''}"${tableName}"${cascade ? ' CASCADE' : ''}`;
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Tabla ${tableName} eliminada exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al eliminar la tabla',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al eliminar la tabla'
-            };
-        }
-    }
-
-    async dropView(connectionId: string, viewName: string, schemaName: string = '', cascade: boolean = false): Promise<TableOperationResponse> {
-        try {
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            const sql = `DROP VIEW ${schemaName ? `${schemaName}.` : ''}"${viewName}"${cascade ? ' CASCADE' : ''}`;
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Vista ${viewName} eliminada exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al eliminar la vista',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al eliminar la vista'
-            };
-        }
-    }
-
-    async dropProcedure(connectionId: string, procedureName: string, schemaName: string = ''): Promise<TableOperationResponse> {
-        try {
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            const sql = `DROP PROCEDURE ${schemaName ? `${schemaName}.` : ''}"${procedureName}"`;
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Procedimiento ${procedureName} eliminado exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al eliminar el procedimiento',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al eliminar el procedimiento'
-            };
-        }
-    }
-
-    async dropFunction(connectionId: string, functionName: string, schemaName: string = ''): Promise<TableOperationResponse> {
-        try {
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            const sql = `DROP FUNCTION ${schemaName ? `${schemaName}.` : ''}"${functionName}"`;
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Función ${functionName} eliminada exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al eliminar la función',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al eliminar la función'
-            };
-        }
-    }
-
-    async dropTrigger(connectionId: string, triggerName: string): Promise<TableOperationResponse> {
-        try {
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            const sql = `DROP TRIGGER "${triggerName}"`;
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Trigger ${triggerName} eliminado exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al eliminar el trigger',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al eliminar el trigger'
-            };
-        }
-    }
-
-    async dropIndex(connectionId: string, indexName: string): Promise<TableOperationResponse> {
-        try {
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            const sql = `DROP INDEX "${indexName}"`;
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Índice ${indexName} eliminado exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al eliminar el índice',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al eliminar el índice'
-            };
-        }
-    }
-
-    async dropSequence(connectionId: string, sequenceName: string): Promise<TableOperationResponse> {
-        try {
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            const sql = `DROP SEQUENCE "${sequenceName}"`;
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Secuencia ${sequenceName} eliminada exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al eliminar la secuencia',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al eliminar la secuencia'
-            };
-        }
-    }
-
-    async createIndex(params: {
-        connectionId: string;
-        indexName: string;
-        tableName: string;
-        schemaName?: string;
-        columns: string[];
-        unique?: boolean;
-        ascending?: boolean[];
-    }): Promise<TableOperationResponse> {
-        try {
-            const { connectionId, indexName, tableName, schemaName, columns, unique = false, ascending } = params;
-
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            if (!indexName || !tableName || !columns || columns.length === 0) {
-                return {
-                    success: false,
-                    message: 'Nombre de índice, tabla y columnas son requeridos'
-                };
-            }
-
-            let sql = `CREATE ${unique ? 'UNIQUE ' : ''}INDEX "${indexName}" ON ${schemaName ? `${schemaName}.` : ''}"${tableName}" (`;
-            
-            const columnSpecs = columns.map((col, index) => {
-                let spec = `"${col}"`;
-                if (ascending && ascending[index] === false) {
-                    spec += ' DESC';
-                }
-                return spec;
-            });
-
-            sql += columnSpecs.join(', ') + ')';
-
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Índice ${indexName} creado exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al crear el índice',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al crear el índice'
-            };
-        }
-    }
-
-    async createSequence(params: {
-        connectionId: string;
-        sequenceName: string;
-        schemaName?: string;
-        startValue?: number;
-        incrementBy?: number;
-    }): Promise<TableOperationResponse> {
-        try {
-            const { connectionId, sequenceName, schemaName, startValue = 1, incrementBy = 1 } = params;
-
-            if (!this.conexiones[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            if (!sequenceName) {
-                return {
-                    success: false,
-                    message: 'Nombre de secuencia es requerido'
-                };
-            }
-
-
-            let sql = `CREATE SEQUENCE "${sequenceName}"`;
-            
-            const result = await this.executeQuery(connectionId, sql);
-
-            if (result.success && startValue !== 1) {
-
-                const setValueSql = `SET GENERATOR "${sequenceName}" TO ${startValue - incrementBy}`;
-                await this.executeQuery(connectionId, setValueSql);
-            }
-
-            if (result.success) {
-                return {
-                    success: true,
-                    message: `Secuencia ${sequenceName} creada exitosamente`,
-                    sql: sql
-                };
-            } else {
-                return {
-                    success: false,
-                    message: result.error || 'Error al crear la secuencia',
-                    sql: sql
-                };
-            }
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Error al crear la secuencia'
-            };
-        }
-    }
 }
 
 

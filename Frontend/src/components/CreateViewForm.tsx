@@ -37,7 +37,7 @@ const CreateViewForm: React.FC<CreateViewFormProps> = ({
         return;
       }
 
-      const ddl = `CREATE VIEW ${schemaName}.${viewName.toUpperCase()} AS\n${sqlQuery}`;
+      let ddl = `CREATE VIEW ${viewName.toUpperCase()} AS\n${sqlQuery}`;
       
       const result = await apiService.executeQuery(connectionId, ddl);
       
@@ -98,38 +98,40 @@ WHERE t1.activo = 1`);
                 id="sqlQuery"
                 value={sqlQuery}
                 onChange={(e) => setSqlQuery(e.target.value)}
-                placeholder="SELECT * FROM tabla WHERE condicion = 'valor'"
-                className="sql-textarea"
-                rows={12}
+                placeholder="Escribe tu consulta SQL aquí..."
+                className="form-input"
+                required
               />
               <button
                 type="button"
                 onClick={insertExampleQuery}
-                className="example-btn"
+                className="example-query-btn"
               >
-                Insertar Ejemplo
+                Ejemplo
               </button>
             </div>
-            <small className="help-text">
-              Escribe la consulta SQL que definirá la vista. La vista se creará en el esquema: <strong>{schemaName}</strong>
-            </small>
           </div>
 
           {error && <div className="error-message">{error}</div>}
-        </div>
 
-        <div className="modal-footer">
-          <button type="button" onClick={onClose} className="cancel-btn">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="submit-btn"
-          >
-            {loading ? 'Creando...' : 'Crear Vista'}
-          </button>
+          <div className="form-actions">
+            <button
+              type="button"
+              onClick={onClose}
+              className="cancel-btn"
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              onClick={handleSubmit}
+              className="submit-btn"
+              disabled={loading || !viewName.trim() || !sqlQuery.trim()}
+            >
+              {loading ? 'Creando...' : 'Crear Vista'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -842,9 +842,9 @@ const DatabaseSidebar = forwardRef(({
                 if (tables.length > 0) {
                   tables.forEach(table => {
                     schemaChildren.push(
-                      <div key={`table-${schemaKey}-${table.table_name}`} className="tree-item table">
+                                              <div key={`table-${schemaKey}-${table.table_name}`} className="tree-item table">
                         <div className="tree-content" onClick={() => onTableSelect && onTableSelect(connection.id, table.table_name, schema.schema_name)}>
-                          <span className="tree-icon">📄</span>
+                          <span className="tree-icon table-icon-img"></span>
                           <span className="tree-label">{table.table_name}</span>
                         </div>
                       </div>
@@ -858,7 +858,7 @@ const DatabaseSidebar = forwardRef(({
                     schemaChildren.push(
                       <div key={`view-${schemaKey}-${view.view_name}`} className="tree-item view">
                         <div className="tree-content">
-                          <span className="tree-icon">👁️</span>
+                          <span className="tree-icon view-icon-img"></span>
                           <span className="tree-label">{view.view_name}</span>
                         </div>
                       </div>
@@ -872,7 +872,7 @@ const DatabaseSidebar = forwardRef(({
                     schemaChildren.push(
                       <div key={`proc-${schemaKey}-${proc.procedure_name}`} className="tree-item procedure">
                         <div className="tree-content">
-                          <span className="tree-icon">⚡</span>
+                          <span className="tree-icon procedure-icon-img"></span>
                           <span className="tree-label">{proc.procedure_name}</span>
                         </div>
                       </div>
@@ -886,7 +886,7 @@ const DatabaseSidebar = forwardRef(({
                     schemaChildren.push(
                       <div key={`fn-${schemaKey}-${fn.function_name}`} className="tree-item function">
                         <div className="tree-content">
-                          <span className="tree-icon">ƒ</span>
+                          <span className="tree-icon function-icon-img"></span>
                           <span className="tree-label">{fn.function_name}</span>
                         </div>
                       </div>
@@ -900,7 +900,7 @@ const DatabaseSidebar = forwardRef(({
                     schemaChildren.push(
                       <div key={`tr-${schemaKey}-${tr.trigger_name}`} className="tree-item trigger">
                         <div className="tree-content">
-                          <span className="tree-icon">🔄</span>
+                          <span className="tree-icon trigger-icon-img"></span>
                           <span className="tree-label">{tr.trigger_name}</span>
                         </div>
                       </div>
@@ -914,7 +914,7 @@ const DatabaseSidebar = forwardRef(({
                     schemaChildren.push(
                       <div key={`ix-${schemaKey}-${ix.index_name}`} className="tree-item index">
                         <div className="tree-content">
-                          <span className="tree-icon">📊</span>
+                          <span className="tree-icon index-icon-img"></span>
                           <span className="tree-label">{ix.index_name}</span>
                         </div>
                       </div>
@@ -927,7 +927,7 @@ const DatabaseSidebar = forwardRef(({
                   schemaItems.push(
                     <div key={`schema-${schemaKey}`} className="tree-item schema">
                       <div className="tree-content" onClick={() => toggleSchemasDropdown(connection.id)}>
-                        <span className="tree-icon">📁</span>
+                        <span className="tree-icon schema-icon-img"></span>
                         <span className="tree-label">{schema.schema_name}</span>
                       </div>
                       {showSchemasDropdown.has(connection.id) && (
@@ -959,7 +959,7 @@ const DatabaseSidebar = forwardRef(({
                       });
                     }}
                   >
-                    <span className="tree-icon">🔌</span>
+                    <span className="tree-icon connection-icon-img"></span>
                     <span className="tree-label">{connection.name}</span>
                     <span className="connection-status">
                       {connection.isActive ? <span className="status-active-icon"></span> : <span className="status-inactive-icon"></span>}
@@ -1415,14 +1415,14 @@ const DatabaseSidebar = forwardRef(({
           </div>
           {/* Mensaje cuando no hay conexiones */}
           {connections.length === 0 && !loading && (
-            <div className="tree-item empty">
-              <div className="tree-content">
-                <span className="tree-icon">ℹ️</span>
-                <span className="tree-label">
-                  No hay conexiones. Conecta a una base de datos para comenzar.
-                </span>
+                          <div className="tree-item empty">
+                <div className="tree-content">
+                  <span className="tree-icon info-icon-img"></span>
+                  <span className="tree-label">
+                    No hay conexiones. Conecta a una base de datos para comenzar.
+                  </span>
+                </div>
               </div>
-            </div>
           )}
         </div>
       </div>
@@ -1442,7 +1442,7 @@ const DatabaseSidebar = forwardRef(({
             selectConnection(contextMenu.connectionId);
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            <span className="tree-icon">🔌</span>
+            <span className="tree-icon connection-icon-img"></span>
             <span>Conectar</span>
           </div>
           
@@ -1450,7 +1450,7 @@ const DatabaseSidebar = forwardRef(({
             disconnectDatabase(contextMenu.connectionId);
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            <span className="tree-icon">🔌</span>
+            <span className="tree-icon disconnect-icon-img"></span>
             <span>Desconectar</span>
           </div>
 
@@ -1459,7 +1459,7 @@ const DatabaseSidebar = forwardRef(({
             if (onConnectionSelect) onConnectionSelect(contextMenu.connectionId);
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            <span className="tree-icon">📝</span>
+            <span className="tree-icon query-icon-img"></span>
             <span>Editor de Consultas</span>
           </div>
 
@@ -1467,7 +1467,7 @@ const DatabaseSidebar = forwardRef(({
             refreshConnection(contextMenu.connectionId);
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            <span className="tree-icon">🔄</span>
+            <span className="tree-icon refresh-icon-img"></span>
             <span>Refresh</span>
           </div>
 
@@ -1478,7 +1478,7 @@ const DatabaseSidebar = forwardRef(({
             }
             setContextMenu({ ...contextMenu, isVisible: false });
           }}>
-            <span className="tree-icon">🗑️</span>
+            <span className="tree-icon delete-icon-img"></span>
             <span>Eliminar</span>
           </div>
         </div>
@@ -1507,7 +1507,7 @@ const DatabaseSidebar = forwardRef(({
           {/* Opción para crear tabla (solo para encabezado de tablas) */}
           {objectContextMenu.objectType === 'table' && !objectContextMenu.objectName && (
             <div className="context-menu-item create-table" onClick={handleCreateTable}>
-              <span className="tree-icon">📄</span>
+              <span className="tree-icon table-icon-img"></span>
               <span>Crear Tabla</span>
             </div>
           )}
@@ -1515,7 +1515,7 @@ const DatabaseSidebar = forwardRef(({
           {/* Opción para crear vista (solo para encabezado de vistas) */}
           {objectContextMenu.objectType === 'view' && !objectContextMenu.objectName && (
             <div className="context-menu-item create-view" onClick={handleCreateView}>
-              <span className="tree-icon">👁️</span>
+              <span className="tree-icon view-icon-img"></span>
               <span>Crear Vista</span>
             </div>
           )}
@@ -1523,7 +1523,7 @@ const DatabaseSidebar = forwardRef(({
           {/* Opción para ver tabla (solo para tablas individuales) */}
           {objectContextMenu.objectName && objectContextMenu.objectType === 'table' && (
             <div className="context-menu-item view-table" onClick={handleViewTable}>
-              <span className="tree-icon">📊</span>
+              <span className="tree-icon table-icon-img"></span>
               <span>Ver Tabla</span>
             </div>
           )}
@@ -1531,7 +1531,7 @@ const DatabaseSidebar = forwardRef(({
           {/* Opción para ver DDL (para elementos individuales) */}
           {objectContextMenu.objectName && objectContextMenu.objectType !== 'schema' && (
             <div className="context-menu-item view-ddl" onClick={handleViewDDL}>
-              <span className="tree-icon">📝</span>
+              <span className="tree-icon ddl-icon-img"></span>
               <span>Ver DDL</span>
             </div>
           )}
@@ -1539,7 +1539,7 @@ const DatabaseSidebar = forwardRef(({
           {/* Opción para modificar DDL (para elementos individuales) */}
           {objectContextMenu.objectName && objectContextMenu.objectType !== 'schema' && (
             <div className="context-menu-item modify-ddl" onClick={handleModifyDDL}>
-              <span className="tree-icon">✏️</span>
+              <span className="tree-icon modify-icon-img"></span>
               <span>Modificar DDL</span>
             </div>
           )}

@@ -1,6 +1,6 @@
 // ========== IMPORTS ==========
 // Importamos React y el hook useState para manejar el estado del componente
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 // Importamos el proveedor de tema para manejar el tema claro/oscuro de la aplicación
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 // Importamos todos los componentes que vamos a usar en la aplicación
@@ -14,6 +14,7 @@ import TableDetails from './components/TableDetails'
 import ObjectDDLViewer from './components/ObjectDDLViewer'
 import NavigationTabs from './components/NavigationTabs'
 import apiService from './services/apiService'
+import type { DatabaseConnection } from './services/apiService'
 // Importamos los estilos CSS para este componente
 import './App.css'
 
@@ -33,6 +34,9 @@ function AppContent() {
 
   // Estado para almacenar el ID de la conexión seleccionada actualmente
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null)
+
+  // Estado para almacenar la lista de conexiones
+  const [connections, setConnections] = useState<DatabaseConnection[]>([])
 
   // Estado para almacenar el nombre de la tabla seleccionada
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
@@ -55,6 +59,24 @@ function AppContent() {
   // Hook para manejar el tema
   const { isDarkMode, toggleTheme } = useTheme()
 
+  // ========== EFECTOS ==========
+  
+  // Efecto para cargar las conexiones al inicio
+  useEffect(() => {
+    const loadConnections = async () => {
+      try {
+        const result = await apiService.getAllConnections()
+        if (result.success) {
+          setConnections(result.connections || [])
+        }
+      } catch (error) {
+        console.error('Error al cargar conexiones:', error)
+      }
+    }
+    
+    loadConnections()
+  }, [])
+
   // ========== FUNCIONES MANEJADORAS DE EVENTOS ==========
 
   // Función que se ejecuta cuando se crea exitosamente una nueva conexión
@@ -62,6 +84,16 @@ function AppContent() {
     // Recargamos las conexiones en el sidebar inmediatamente
     if (sidebarRef.current) {
       await sidebarRef.current.loadConnections()
+    }
+    
+    // También actualizamos el estado local de conexiones
+    try {
+      const result = await apiService.getAllConnections()
+      if (result.success) {
+        setConnections(result.connections || [])
+      }
+    } catch (error) {
+      console.error('Error al cargar conexiones:', error)
     }
   }
 
@@ -259,6 +291,7 @@ function AppContent() {
           {activeView === 'query' ? (
             <QueryEditor
               connectionId={selectedConnection}
+              connectionName={connections.find(conn => conn.id === selectedConnection)?.name}
               initialQuery={initialQuery}
               onQueryExecuted={(result) => console.log('Query executed:', result)}
             />

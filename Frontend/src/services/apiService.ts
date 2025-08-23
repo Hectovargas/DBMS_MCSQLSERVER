@@ -74,7 +74,7 @@ export interface QueryResult {
 }
 
 class ApiService {
-  // Función helper para manejar errores de red
+
   private async handleResponse(response: Response): Promise<any> {
     if (!response.ok) {
       const errorText = await response.text();
@@ -92,7 +92,7 @@ class ApiService {
     }
   }
 
-  // Prueba de conexión
+
   async testConnection(config: ConnectionConfig): Promise<any> {
     try {
       console.log('Probando conexión con config:', { ...config, password: '***' });
@@ -110,7 +110,7 @@ class ApiService {
     }
   }
 
-  // Agregar conexión
+
   async addConnection(config: ConnectionConfig): Promise<any> {
     try {
       console.log('Agregando conexión con config:', { ...config, password: '***' });

@@ -16,12 +16,13 @@ import './QueryEditor.css';
 // Definimos la interfaz TypeScript para las props que recibe el componente
 interface QueryEditorProps {
   connectionId: string | null; // ID de la conexión activa (puede ser null si no hay conexión)
+  connectionName?: string; // Nombre de la conexión activa
   onQueryExecuted?: (result: QueryResult) => void; // Callback opcional cuando se ejecuta una consulta
   initialQuery?: string; // Query inicial para cargar en el editor
 }
 
 // ========== COMPONENTE PRINCIPAL ==========
-const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, onQueryExecuted, initialQuery = '' }) => {
+const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, connectionName, onQueryExecuted, initialQuery = '' }) => {
   // ========== ESTADOS DEL EDITOR ==========
   
   // Estado para almacenar la consulta SQL que escribe el usuario
@@ -145,7 +146,15 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ connectionId, onQueryExecuted
     <div className="query-editor">
       {/* ========== ENCABEZADO DEL EDITOR ========== */}
       <div className="query-editor-header">
-        <h3>Editor de Consultas SQL</h3>
+        <div className="header-info">
+          <h3>Editor de Consultas SQL</h3>
+          {connectionName && (
+            <div className="connection-info">
+              <span className="connection-label">Conectado a:</span>
+              <span className="connection-name">{connectionName}</span>
+            </div>
+          )}
+        </div>
         
         {/* ========== BOTONES DE ACCIÓN ========== */}
         <div className="query-actions">
