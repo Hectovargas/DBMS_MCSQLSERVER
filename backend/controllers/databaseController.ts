@@ -668,6 +668,35 @@ class databaseController {
     }
   }
 
+  async generatePackageDDL(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId, packageName } = req.params;
+      const { schemaName = '' } = req.query;
+      
+      if (!connectionId || !packageName) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId y packageName son requeridos'
+        });
+        return;
+      }
+
+      const result = await databaseManager.generatePackageDDL(connectionId, packageName, schemaName);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al generar DDL del paquete',
+        error: { message: error.message }
+      });
+    }
+  }
+
   async generateSequenceDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, sequenceName } = req.params;
@@ -692,6 +721,34 @@ class databaseController {
       res.status(500).json({
         success: false,
         message: 'Error al generar DDL de la secuencia',
+        error: { message: error.message }
+      });
+    }
+  }
+
+  async listAllSequences(req: any, res: any): Promise<void> {
+    try {
+      const { connectionId } = req.params;
+      
+      if (!connectionId) {
+        res.status(400).json({
+          success: false,
+          message: 'connectionId es requerido'
+        });
+        return;
+      }
+
+      const result = await databaseManager.listAllSequences(connectionId);
+      
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error al listar secuencias',
         error: { message: error.message }
       });
     }

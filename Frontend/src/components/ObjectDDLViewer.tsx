@@ -12,7 +12,7 @@ interface ObjectDDLViewerProps {
   connectionId: string | null;
   objectName: string | null;
   schemaName: string | null;
-  objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'table' | 'user';
+  objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'table' | 'user' | 'package';
 }
 
 // ========== COMPONENTE PRINCIPAL ==========
@@ -74,6 +74,9 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
         case 'user':
           result = await apiService.generateUserDDL(connectionId, objectName, schemaName || '');
           break;
+        case 'package':
+          result = await apiService.generatePackageDDL(connectionId, objectName, schemaName || '');
+          break;
         default:
           throw new Error('Tipo de objeto no soportado');
       }
@@ -101,8 +104,9 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
       case 'view': return 'Vista';
       case 'index': return 'Índice';
       case 'sequence': return 'Secuencia';
-      case 'user': return 'Usuario';
-      default: return 'Objeto';
+              case 'user': return 'Usuario';
+        case 'package': return 'Paquete';
+        default: return 'Objeto';
     }
   };
 
@@ -113,8 +117,9 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
       case 'procedure': return 'CREATE PROCEDURE';
       case 'view': return 'CREATE VIEW';
       case 'index': return 'CREATE INDEX';
-      case 'sequence': return 'CREATE SEQUENCE';
-      default: return 'CREATE';
+              case 'sequence': return 'CREATE SEQUENCE';
+        case 'package': return 'CREATE PACKAGE';
+        default: return 'CREATE';
     }
   };
 

@@ -45,6 +45,7 @@ router.get('/:connectionId/triggers/:triggerName/ddl', DatabaseController.genera
 router.get('/:connectionId/procedures/:procedureName/ddl', DatabaseController.generateProcedureDDL);
 router.get('/:connectionId/views/:viewName/ddl', DatabaseController.generateViewDDL);
 router.get('/:connectionId/indexes/:indexName/ddl', DatabaseController.generateIndexDDL);
+router.get('/:connectionId/packages/:packageName/ddl', DatabaseController.generatePackageDDL);
 router.get('/:connectionId/sequences/:sequenceName/ddl', DatabaseController.generateSequenceDDL);
 router.get('/:connectionId/users/:userName/ddl', DatabaseController.generateUserDDL);
 

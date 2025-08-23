@@ -7,13 +7,13 @@ import './DatabaseSidebar.css';
 interface DatabaseSidebarProps {
   onConnectionSelect?: (connectionId: string) => void;
   onTableSelect?: (connectionId: string, tableName: string, schemaName: string) => void;
-  onObjectSelect?: (connectionId: string, objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence', objectName: string, schemaName: string) => void;
+  onObjectSelect?: (connectionId: string, objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'package', objectName: string, schemaName: string) => void;
   onAddConnection?: () => void;
   onViewChange?: (view: 'welcome' | 'query' | 'table' | 'object') => void; // Callback para cambiar vista
   onCreateTable?: (connectionId: string, schemaName: string) => void; // Nueva prop para crear tabla
   onCreateView?: (connectionId: string, schemaName: string) => void; // Nueva prop para crear vista
-  onViewDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user', objectName: string, schemaName: string) => void; // Nueva prop para ver DDL
-  onModifyDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user', objectName: string, schemaName: string) => void; // Nueva prop para modificar DDL
+  onViewDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string, schemaName: string) => void; // Nueva prop para ver DDL
+  onModifyDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string, schemaName: string) => void; // Nueva prop para modificar DDL
   onViewTable?: (connectionId: string, tableName: string, schemaName: string) => void; // Nueva prop para ver tabla
 }
 
@@ -52,7 +52,7 @@ const DatabaseSidebar = forwardRef(({
     y: number;
     connectionId: string;
     schemaName: string;
-    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'schema' | 'user';
+    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'schema' | 'user' | 'package';
     objectName: string;
     isVisible: boolean;
   }>({
@@ -82,6 +82,10 @@ const DatabaseSidebar = forwardRef(({
   const [schemaFunctions, setSchemaFunctions] = useState<Record<string, any[]>>({});
   const [schemaTriggers, setSchemaTriggers] = useState<Record<string, any[]>>({});
   const [schemaIndexes, setSchemaIndexes] = useState<Record<string, any[]>>({});
+  const [schemaPackages, setSchemaPackages] = useState<Record<string, any[]>>({});
+  
+
+  
   const [connectionSequences, setConnectionSequences] = useState<Record<string, any[]>>({});
   const [connectionUsers, setConnectionUsers] = useState<Record<string, any[]>>({});
 
@@ -93,6 +97,7 @@ const DatabaseSidebar = forwardRef(({
   const [loadingFunctions, setLoadingFunctions] = useState<Set<string>>(new Set());
   const [loadingTriggers, setLoadingTriggers] = useState<Set<string>>(new Set());
   const [loadingIndexes, setLoadingIndexes] = useState<Set<string>>(new Set());
+  const [loadingPackages, setLoadingPackages] = useState<Set<string>>(new Set());
   const [loadingSequences, setLoadingSequences] = useState<Set<string>>(new Set());
   const [loadingUsers, setLoadingUsers] = useState<Set<string>>(new Set());
 
@@ -216,6 +221,16 @@ const DatabaseSidebar = forwardRef(({
         return newState;
       });
 
+      setSchemaPackages(prev => {
+        const newState = { ...prev };
+        Object.keys(newState).forEach(key => {
+          if (key.startsWith(`${connectionId}-`)) {
+            delete newState[key];
+          }
+        });
+        return newState;
+      });
+
       setConnectionSequences(prev => {
         const newState = { ...prev };
         delete newState[connectionId];
@@ -254,6 +269,9 @@ const DatabaseSidebar = forwardRef(({
           }
           if (showIndexesDropdown.has(schemaKey)) {
             await loadIndexes(connectionId, schema.schema_name);
+          }
+          if (showPackagesDropdown.has(schemaKey)) {
+            await loadPackages(connectionId, schema.schema_name);
           }
         }
 
@@ -331,6 +349,9 @@ const DatabaseSidebar = forwardRef(({
       if (kind === 'functions' && !schemaFunctions[key]) await loadFunctions(connectionId, schemaName);
       if (kind === 'triggers' && !schemaTriggers[key]) await loadTriggers(connectionId, schemaName);
       if (kind === 'indexes' && !schemaIndexes[key]) await loadIndexes(connectionId, schemaName);
+      if (kind === 'packages' && !schemaPackages[key]) {
+        await loadPackages(connectionId, schemaName);
+      }
       if (kind === 'sequences' && !connectionSequences[connectionId]) await loadSequences(connectionId);
       if (kind === 'users' && !connectionUsers[connectionId]) await loadUsers(connectionId);
     }
@@ -546,6 +567,25 @@ const DatabaseSidebar = forwardRef(({
     }
   };
 
+  const loadPackages = async (connectionId: string, schemaName: string) => {
+    const schemaKey = `${connectionId}-${schemaName}`;
+    try {
+      setLoadingPackages(prev => new Set(prev).add(schemaKey));
+      const response = await apiService.getPackages(connectionId, schemaName);
+      if (response.success) {
+        const normalized = response.data.map((item: any) => ({
+          ...item,
+          package_name: item.PACKAGE_NAME?.trim() || '',
+          schema_name: item.SCHEMA_NAME?.trim() || schemaName,
+          description: item.DESCRIPTION || item.description
+        }));
+        setSchemaPackages(prev => ({ ...prev, [schemaKey]: normalized }));
+      }
+    } finally {
+      setLoadingPackages(prev => { const s = new Set(prev); s.delete(schemaKey); return s; });
+    }
+  };
+
   const loadSequences = async (connectionId: string) => {
     try {
       setLoadingSequences(prev => new Set(prev).add(connectionId));
@@ -608,6 +648,78 @@ const DatabaseSidebar = forwardRef(({
           return newState;
         });
 
+        setSchemaViews(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaProcedures(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaFunctions(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaTriggers(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaIndexes(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaPackages(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setConnectionSequences(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+
+        setConnectionUsers(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+
         // Limpiar estados de expansión y dropdowns
         setExpandedConnections(prev => {
           const newSet = new Set(prev);
@@ -630,6 +742,78 @@ const DatabaseSidebar = forwardRef(({
           });
           return newSet;
         });
+
+        setShowViewsDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowPackagesDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowProceduresDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowFunctionsDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowTriggersDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowIndexesDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowSequencesDropdown(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(connectionId);
+          return newSet;
+        });
+
+        setShowUsersDropdown(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(connectionId);
+          return newSet;
+        });
       }
     } catch (error) {
       console.error('Error al desconectar:', error);
@@ -641,7 +825,7 @@ const DatabaseSidebar = forwardRef(({
     e: React.MouseEvent,
     connectionId: string,
     schemaName: string,
-    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'schema' | 'user',
+    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'schema' | 'user' | 'package',
     objectName: string
   ) => {
     e.preventDefault();
@@ -683,7 +867,7 @@ const DatabaseSidebar = forwardRef(({
     if (onViewDDL && objectContextMenu.objectType !== 'schema') {
       onViewDDL(
         objectContextMenu.connectionId,
-        objectContextMenu.objectType as 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user',
+        objectContextMenu.objectType as 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package',
         objectContextMenu.objectName,
         objectContextMenu.schemaName
       );
@@ -708,7 +892,7 @@ const DatabaseSidebar = forwardRef(({
     if (onModifyDDL && objectContextMenu.objectType !== 'schema') {
       onModifyDDL(
         objectContextMenu.connectionId,
-        objectContextMenu.objectType as 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user',
+        objectContextMenu.objectType as 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package',
         objectContextMenu.objectName,
         objectContextMenu.schemaName
       );
@@ -745,6 +929,78 @@ const DatabaseSidebar = forwardRef(({
           return newState;
         });
 
+        setSchemaViews(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaProcedures(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaFunctions(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaTriggers(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaIndexes(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setSchemaPackages(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        setConnectionSequences(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+
+        setConnectionUsers(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+
         setExpandedConnections(prev => {
           const newSet = new Set(prev);
           newSet.delete(connectionId);
@@ -764,6 +1020,78 @@ const DatabaseSidebar = forwardRef(({
               newSet.delete(key);
             }
           });
+          return newSet;
+        });
+
+        setShowViewsDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowPackagesDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowProceduresDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowFunctionsDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowTriggersDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowIndexesDropdown(prev => {
+          const newSet = new Set(prev);
+          Array.from(prev).forEach(key => {
+            if (key.startsWith(`${connectionId}-`)) {
+              newSet.delete(key);
+            }
+          });
+          return newSet;
+        });
+
+        setShowSequencesDropdown(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(connectionId);
+          return newSet;
+        });
+
+        setShowUsersDropdown(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(connectionId);
           return newSet;
         });
 
@@ -834,6 +1162,7 @@ const DatabaseSidebar = forwardRef(({
                 const functions = schemaFunctions[schemaKey] || [];
                 const triggers = schemaTriggers[schemaKey] || [];
                 const indexes = schemaIndexes[schemaKey] || [];
+                const packages = schemaPackages[schemaKey] || [];
 
                 // Añadir elementos del esquema
                 const schemaChildren: React.ReactNode[] = [];
@@ -916,6 +1245,20 @@ const DatabaseSidebar = forwardRef(({
                         <div className="tree-content">
                           <span className="tree-icon index-icon-img"></span>
                           <span className="tree-label">{ix.index_name}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                }
+
+                // Añadir paquetes
+                if (packages.length > 0) {
+                  packages.forEach(pkg => {
+                    schemaChildren.push(
+                      <div key={`pkg-${schemaKey}-${pkg.package_name}`} className="tree-item package">
+                        <div className="tree-content">
+                          <span className="tree-icon package-icon-img"></span>
+                          <span className="tree-label">{pkg.package_name}</span>
                         </div>
                       </div>
                     );
@@ -1302,6 +1645,54 @@ const DatabaseSidebar = forwardRef(({
                                       </div>
                                       {(schemaIndexes[schemaKey] || []).length === 0 && !loadingIndexes.has(schemaKey) && (
                                         <div className="no-schemas-message">No hay índices disponibles</div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Paquetes */}
+                                  <div
+                                    className="section-header clickeable-header schema-category"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleGenericSchemaDropdown('packages', connection.id, schema.schema_name);
+                                    }}
+                                    onContextMenu={(e) => {
+                                      e.stopPropagation();
+                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'package', '');
+                                    }}
+                                  >
+                                    <span className={`expand-icon ${showPackagesDropdown.has(schemaKey) ? 'expanded' : ''}`}>
+                                      {showPackagesDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                                    </span>
+                                    <span className="section-title">Paquetes</span>
+                                    <span className="schema-count">({(schemaPackages[schemaKey] || []).length})</span>
+                                    {loadingPackages.has(schemaKey) && <span className="loading-indicator loading-icon"></span>}
+
+                                  </div>
+                                  {showPackagesDropdown.has(schemaKey) && (
+                                    <div className="schemas-dropdown schema-element">
+                                      <div className="tables-list">
+                                        {(schemaPackages[schemaKey] || []).map((pkg) => (
+                                          <div
+                                            key={`pkg-${connection.id}-${schema.schema_name}-${pkg.package_name}`}
+                                            className="table-item clickeable-item"
+                                            onClick={() => {
+                                              if (onObjectSelect) {
+                                                onObjectSelect(connection.id, 'package', pkg.package_name, schema.schema_name);
+                                              }
+                                            }}
+                                            onContextMenu={(e) => {
+                                              e.stopPropagation();
+                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'package', pkg.package_name);
+                                            }}
+                                          >
+                                            <span className="table-icon table-icon-img"></span>
+                                            <span className="table-name">{pkg.package_name}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      {(schemaPackages[schemaKey] || []).length === 0 && !loadingPackages.has(schemaKey) && (
+                                        <div className="no-schemas-message">No hay paquetes disponibles</div>
                                       )}
                                     </div>
                                   )}

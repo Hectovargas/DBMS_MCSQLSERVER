@@ -557,6 +557,22 @@ class ApiService {
     }
   }
 
+  // Generar DDL de paquete
+  async generatePackageDDL(connectionId: string, packageName: string, schemaName: string = ''): Promise<any> {
+    try {
+      console.log('Generando DDL de paquete:', { connectionId, packageName, schemaName });
+      
+      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
+      const url = `${API_BASE}/${connectionId}/packages/${packageName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      
+      const response = await fetch(url);
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('Error en generatePackageDDL:', error);
+      throw error;
+    }
+  }
+
   //--------------------------------------------------------------------------------------------------------------------------------------
   // MÉTODOS PARA CREAR OBJETOS
   //--------------------------------------------------------------------------------------------------------------------------------------
