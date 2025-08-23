@@ -7,29 +7,22 @@ import React, { useState, useEffect } from 'react';
 import apiService from '../services/apiService';
 import './ObjectDDLViewer.css';
 
-// ========== INTERFAZ DE PROPS ==========
 interface ObjectDDLViewerProps {
   connectionId: string | null;
   objectName: string | null;
-  schemaName: string | null;
   objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'table' | 'user' | 'package';
 }
 
-// ========== COMPONENTE PRINCIPAL ==========
 const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({ 
   connectionId, 
   objectName, 
-  schemaName, 
   objectType 
 }) => {
-  console.log('ObjectDDLViewer rendered with props:', { connectionId, objectName, schemaName, objectType });
   
-  // ========== ESTADOS DEL COMPONENTE ==========
   const [ddl, setDdl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  // ========== EFECTO PARA CARGAR DDL ==========
   useEffect(() => {
     if (connectionId && objectName) {
       loadObjectDDL();
@@ -39,7 +32,6 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
     }
   }, [connectionId, objectName, objectType]);
 
-  // ========== FUNCIONES PARA CARGAR DATOS ==========
   const loadObjectDDL = async () => {
     if (!connectionId || !objectName) return;
 
@@ -51,50 +43,52 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
       
       switch (objectType) {
         case 'table':
-          result = await apiService.generateTableDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generateTableDDL(connectionId, objectName);
           break;
         case 'function':
-          result = await apiService.generateFunctionDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generateFunctionDDL(connectionId, objectName);
           break;
         case 'trigger':
-          result = await apiService.generateTriggerDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generateTriggerDDL(connectionId, objectName);
           break;
         case 'procedure':
-          result = await apiService.generateProcedureDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generateProcedureDDL(connectionId, objectName);
           break;
         case 'view':
-          result = await apiService.generateViewDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generateViewDDL(connectionId, objectName);
           break;
         case 'index':
-          result = await apiService.generateIndexDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generateIndexDDL(connectionId, objectName);
           break;
         case 'sequence':
-          result = await apiService.generateSequenceDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generateSequenceDDL(connectionId, objectName);
           break;
         case 'user':
-          result = await apiService.generateUserDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generateUserDDL(connectionId, objectName);
           break;
         case 'package':
-          result = await apiService.generatePackageDDL(connectionId, objectName, schemaName || '');
+          result = await apiService.generatePackageDDL(connectionId, objectName);
           break;
         default:
           throw new Error('Tipo de objeto no soportado');
       }
 
       if (result.success) {
-        setDdl(result.data || '');
+        const ddlContent = objectType === 'package' 
+          ? result.data?.ddl || '' 
+          : result.data || '';
+        
+        setDdl(ddlContent);
       } else {
         setError(result.message || 'Error al cargar el DDL');
       }
     } catch (err: any) {
-      console.error('Error al cargar DDL:', err);
       setError(err.message || 'Error al cargar el DDL');
     } finally {
       setLoading(false);
     }
   };
 
-  // ========== FUNCIONES AUXILIARES ==========
   const getObjectTypeDisplayName = (): string => {
     switch (objectType) {
       case 'table': return 'Tabla';
@@ -104,9 +98,9 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
       case 'view': return 'Vista';
       case 'index': return 'Índice';
       case 'sequence': return 'Secuencia';
-              case 'user': return 'Usuario';
-        case 'package': return 'Paquete';
-        default: return 'Objeto';
+      case 'user': return 'Usuario';
+      case 'package': return 'Paquete';
+      default: return 'Objeto';
     }
   };
 
@@ -117,13 +111,27 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
       case 'procedure': return 'CREATE PROCEDURE';
       case 'view': return 'CREATE VIEW';
       case 'index': return 'CREATE INDEX';
-              case 'sequence': return 'CREATE SEQUENCE';
-        case 'package': return 'CREATE PACKAGE';
-        default: return 'CREATE';
+      case 'sequence': return 'CREATE SEQUENCE';
+      case 'package': return 'CREATE PACKAGE';
+      default: return 'CREATE';
     }
   };
 
-  // ========== VALIDACIÓN DE PROPS ==========
+
+  
+  const safeHighlight = (code: any): string => {
+    try {
+      if (typeof code !== 'string') {
+        console.warn('Expected string for highlighting, got:', typeof code);
+        return highlight('', languages.sql, 'sql');
+      }
+      return highlight(code, languages.sql, 'sql');
+    } catch (error) {
+      console.error('Error in syntax highlighting:', error);
+      return code || '';
+    }
+  };
+
   if (!connectionId || !objectName) {
     return (
       <div className="object-ddl-viewer">
@@ -134,30 +142,24 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
     );
   }
 
-  // ========== RENDERIZADO DEL COMPONENTE ==========
   return (
     <div className="object-ddl-viewer">
-      {/* ========== ENCABEZADO CON INFORMACIÓN DEL OBJETO ========== */}
       <div className="object-header">
         <h3>DDL del {getObjectTypeDisplayName()}: {objectName}</h3>
-        {schemaName && <span className="schema-name">Esquema: {schemaName}</span>}
       </div>
 
-      {/* ========== INDICADOR DE CARGA ========== */}
       {loading && (
         <div className="loading-message">
           <p>Generando DDL del {getObjectTypeDisplayName().toLowerCase()}...</p>
         </div>
       )}
 
-      {/* ========== MENSAJE DE ERROR ========== */}
       {error && (
         <div className="error-message">
           <p><span className="error-icon"></span> {error}</p>
         </div>
       )}
 
-      {/* ========== CONTENIDO DEL DDL ========== */}
       {!loading && !error && (
         <div className="ddl-content">
           <div className="ddl-header">
@@ -165,21 +167,21 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
             <p>Consulta para recrear este {getObjectTypeDisplayName().toLowerCase()}:</p>
           </div>
 
-          {/* DDL del objeto */}
           <div className="ddl-suggestion">
             <div className="ddl-header">
               <span>DDL del {getObjectTypeDisplayName().toLowerCase()}</span>
               <button
                 className="copy-btn"
-                onClick={() => navigator.clipboard.writeText(ddl)}
+                onClick={() => navigator.clipboard.writeText(ddl || '')}
+                disabled={!ddl}
               >
                 Copiar
               </button>
             </div>
             <Editor
-              value={ddl}
+              value={ddl || ''} // Ensure value is always a string
               onValueChange={() => { }}
-              highlight={(code) => highlight(code, languages.sql, 'sql')}
+              highlight={(code) => safeHighlight(code)}
               padding={16}
               style={{
                 fontFamily: '"Monaco", "Menlo", "Ubuntu Mono", monospace',
@@ -198,5 +200,4 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
   );
 };
 
-// Exportamos el componente para que pueda ser usado en otros archivos
 export default ObjectDDLViewer;

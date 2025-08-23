@@ -5,14 +5,12 @@ interface DDLViewerProps {
   connectionId: string;
   objectType: 'table' | 'view' | 'function' | 'procedure' | 'trigger' | 'index' | 'sequence';
   objectName: string;
-  schemaName?: string;
   onClose?: () => void;
 }
 const DDLViewer: React.FC<DDLViewerProps> = ({
   connectionId,
   objectType,
   objectName,
-  schemaName = '',
   onClose
 }) => {
   const [ddl, setDdl] = useState<string>('');
@@ -21,7 +19,7 @@ const DDLViewer: React.FC<DDLViewerProps> = ({
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     loadDDL();
-  }, [connectionId, objectType, objectName, schemaName]);
+  }, [connectionId, objectType, objectName]);
   const loadDDL = async () => {
     setIsLoading(true);
     setError('');
@@ -30,25 +28,25 @@ const DDLViewer: React.FC<DDLViewerProps> = ({
       let result;
       switch (objectType) {
         case 'table':
-          result = await apiService.generateTableDDL(connectionId, objectName, schemaName);
+          result = await apiService.generateTableDDL(connectionId, objectName);
           break;
         case 'view':
-          result = await apiService.generateViewDDL(connectionId, objectName, schemaName);
+          result = await apiService.generateViewDDL(connectionId, objectName);
           break;
         case 'function':
-          result = await apiService.generateFunctionDDL(connectionId, objectName, schemaName);
+          result = await apiService.generateFunctionDDL(connectionId, objectName);
           break;
         case 'procedure':
-          result = await apiService.generateProcedureDDL(connectionId, objectName, schemaName);
+          result = await apiService.generateProcedureDDL(connectionId, objectName);
           break;
         case 'trigger':
-          result = await apiService.generateTriggerDDL(connectionId, objectName, schemaName);
+          result = await apiService.generateTriggerDDL(connectionId, objectName);
           break;
         case 'index':
-          result = await apiService.generateIndexDDL(connectionId, objectName, schemaName);
+          result = await apiService.generateIndexDDL(connectionId, objectName);
           break;
         case 'sequence':
-          result = await apiService.generateSequenceDDL(connectionId, objectName, schemaName);
+          result = await apiService.generateSequenceDDL(connectionId, objectName);
           break;
         default:
           throw new Error('Tipo de objeto no soportado');
@@ -120,8 +118,7 @@ const DDLViewer: React.FC<DDLViewerProps> = ({
         <div className="ddl-header">
           <div className="header-info">
             <h2>DDL de {getObjectTypeLabel()}</h2>
-            <p className="object-name">
-              {schemaName && schemaName !== 'DEFAULT' ? `${schemaName}.` : ''}{objectName}
+            <p className="object-name">{objectName}
             </p>
           </div>
           <button onClick={onClose} className="close-btn">×</button>

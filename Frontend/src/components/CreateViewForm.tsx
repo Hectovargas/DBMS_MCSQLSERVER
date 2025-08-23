@@ -6,7 +6,6 @@ interface CreateViewFormProps {
   isOpen: boolean;
   onClose: () => void;
   connectionId: string;
-  schemaName: string;
   onSuccess?: () => void;
 }
 
@@ -14,7 +13,6 @@ const CreateViewForm: React.FC<CreateViewFormProps> = ({
   isOpen,
   onClose,
   connectionId,
-  schemaName,
   onSuccess
 }) => {
   const [viewName, setViewName] = useState('');

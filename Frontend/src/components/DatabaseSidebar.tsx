@@ -1,27 +1,25 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import type { Ref } from 'react';
 import apiService from '../services/apiService';
-import type { DatabaseConnection, Schema, Table } from '../services/apiService';
+import type { DatabaseConnection, Table } from '../services/apiService';
 import './DatabaseSidebar.css';
 
 interface DatabaseSidebarProps {
   onConnectionSelect?: (connectionId: string) => void;
-  onTableSelect?: (connectionId: string, tableName: string, schemaName: string) => void;
-  onObjectSelect?: (connectionId: string, objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'package', objectName: string, schemaName: string) => void;
+  onTableSelect?: (connectionId: string, tableName: string) => void;
+  onObjectSelect?: (connectionId: string, objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'package' | 'user', objectName: string) => void;
   onAddConnection?: () => void;
-  onViewChange?: (view: 'welcome' | 'query' | 'table' | 'object') => void; // Callback para cambiar vista
-  onCreateTable?: (connectionId: string, schemaName: string) => void; // Nueva prop para crear tabla
-  onCreateView?: (connectionId: string, schemaName: string) => void; // Nueva prop para crear vista
-  onViewDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string, schemaName: string) => void; // Nueva prop para ver DDL
-  onModifyDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string, schemaName: string) => void; // Nueva prop para modificar DDL
-  onViewTable?: (connectionId: string, tableName: string, schemaName: string) => void; // Nueva prop para ver tabla
+  onViewChange?: (view: 'welcome' | 'query' | 'table' | 'object') => void; 
+  onCreateTable?: (connectionId: string) => void; 
+  onCreateView?: (connectionId: string) => void; 
+  onViewDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string) => void;
+  onModifyDDL?: (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string) => void;
+  onViewTable?: (connectionId: string, tableName: string) => void; 
 }
 
 export interface DatabaseSidebarRef {
   loadConnections: () => Promise<void>;
-
 }
-
 
 const DatabaseSidebar = forwardRef(({
   onConnectionSelect,
@@ -51,15 +49,13 @@ const DatabaseSidebar = forwardRef(({
     x: number;
     y: number;
     connectionId: string;
-    schemaName: string;
-    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'schema' | 'user' | 'package';
+    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package';
     objectName: string;
     isVisible: boolean;
   }>({
     x: 0,
     y: 0,
     connectionId: '',
-    schemaName: '',
     objectType: 'table',
     objectName: '',
     isVisible: false
@@ -70,27 +66,31 @@ const DatabaseSidebar = forwardRef(({
   const [, setSelectedConnection] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [showSchemasDropdown, setShowSchemasDropdown] = useState<Set<string>>(new Set());
-  const [showTablesDropdown, setShowTablesDropdown] = useState<Set<string>>(new Set());
-
-  const [expandedConnections, setExpandedConnections] = useState<Set<string>>(new Set());
-
-  const [connectionSchemas, setConnectionSchemas] = useState<Record<string, Schema[]>>({});
-  const [schemaTables, setSchemaTables] = useState<Record<string, Table[]>>({});
-  const [schemaViews, setSchemaViews] = useState<Record<string, any[]>>({});
-  const [schemaProcedures, setSchemaProcedures] = useState<Record<string, any[]>>({});
-  const [schemaFunctions, setSchemaFunctions] = useState<Record<string, any[]>>({});
-  const [schemaTriggers, setSchemaTriggers] = useState<Record<string, any[]>>({});
-  const [schemaIndexes, setSchemaIndexes] = useState<Record<string, any[]>>({});
-  const [schemaPackages, setSchemaPackages] = useState<Record<string, any[]>>({});
-  
-
-  
+  // Estados para objetos de conexión directa
+  const [connectionTables, setConnectionTables] = useState<Record<string, Table[]>>({});
+  const [connectionViews, setConnectionViews] = useState<Record<string, any[]>>({});
+  const [connectionProcedures, setConnectionProcedures] = useState<Record<string, any[]>>({});
+  const [connectionFunctions, setConnectionFunctions] = useState<Record<string, any[]>>({});
+  const [connectionTriggers, setConnectionTriggers] = useState<Record<string, any[]>>({});
+  const [connectionIndexes, setConnectionIndexes] = useState<Record<string, any[]>>({});
+  const [connectionPackages, setConnectionPackages] = useState<Record<string, any[]>>({});
   const [connectionSequences, setConnectionSequences] = useState<Record<string, any[]>>({});
   const [connectionUsers, setConnectionUsers] = useState<Record<string, any[]>>({});
 
+  // Estados para dropdowns de objetos
+  const [showTablesDropdown, setShowTablesDropdown] = useState<Set<string>>(new Set());
+  const [showViewsDropdown, setShowViewsDropdown] = useState<Set<string>>(new Set());
+  const [showProceduresDropdown, setShowProceduresDropdown] = useState<Set<string>>(new Set());
+  const [showFunctionsDropdown, setShowFunctionsDropdown] = useState<Set<string>>(new Set());
+  const [showTriggersDropdown, setShowTriggersDropdown] = useState<Set<string>>(new Set());
+  const [showIndexesDropdown, setShowIndexesDropdown] = useState<Set<string>>(new Set());
+  const [showPackagesDropdown, setShowPackagesDropdown] = useState<Set<string>>(new Set());
+  const [showSequencesDropdown, setShowSequencesDropdown] = useState<Set<string>>(new Set());
+  const [showUsersDropdown, setShowUsersDropdown] = useState<Set<string>>(new Set());
+
+  const [expandedConnections, setExpandedConnections] = useState<Set<string>>(new Set());
+
   // Estados de carga
-  const [loadingSchemas, setLoadingSchemas] = useState<Set<string>>(new Set());
   const [loadingTables, setLoadingTables] = useState<Set<string>>(new Set());
   const [loadingViews, setLoadingViews] = useState<Set<string>>(new Set());
   const [loadingProcedures, setLoadingProcedures] = useState<Set<string>>(new Set());
@@ -101,332 +101,108 @@ const DatabaseSidebar = forwardRef(({
   const [loadingSequences, setLoadingSequences] = useState<Set<string>>(new Set());
   const [loadingUsers, setLoadingUsers] = useState<Set<string>>(new Set());
 
-  // ========== EFECTO PARA CARGA INICIAL ==========
-  useEffect(() => {
-    loadConnections();
-  }, []);
-
-  // ========== FUNCIONES PARA CARGAR DATOS ==========
-  const loadConnections = async () => {
-    try {
-      setLoading(true);
-      const result = await apiService.getAllConnections();
-
-      if (result.success) {
-        setConnections(result.connections || []);
-      }
-    } catch (error) {
-      console.error('Error al cargar conexiones:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Exponemos el método loadConnections
+  // Exponer métodos al componente padre
   useImperativeHandle(ref, () => ({
     loadConnections
   }));
 
-  // ========== FUNCIONES PARA MANEJAR DROPDOWNS ==========
-
-  // Función para alternar dropdown de esquemas
-  const toggleSchemasDropdown = async (connectionId: string) => {
-    const newDropdown = new Set(showSchemasDropdown);
-    if (newDropdown.has(connectionId)) {
-      newDropdown.delete(connectionId);
-      // Cuando cerramos esquemas, también cerramos todas las tablas de esa conexión
-      const newTablesDropdown = new Set(showTablesDropdown);
-      Array.from(showTablesDropdown).forEach(key => {
-        if (key.startsWith(`${connectionId}-`)) {
-          newTablesDropdown.delete(key);
-        }
-      });
-      setShowTablesDropdown(newTablesDropdown);
-    } else {
-      newDropdown.add(connectionId);
-      // Cargar esquemas si no los tenemos
-      if (!connectionSchemas[connectionId]) {
-        await loadSchemas(connectionId);
-      }
-    }
-    setShowSchemasDropdown(newDropdown);
-  };
-
-  const refreshConnection = async (connectionId: string) => {
+  const loadConnections = async () => {
+      setLoading(true);
     try {
-
-      setConnectionSchemas(prev => {
-        const newState = { ...prev };
-        delete newState[connectionId];
-        return newState;
-      });
-
-      setSchemaTables(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          if (key.startsWith(`${connectionId}-`)) {
-            delete newState[key];
-          }
-        });
-        return newState;
-      });
-
-      setSchemaViews(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          if (key.startsWith(`${connectionId}-`)) {
-            delete newState[key];
-          }
-        });
-        return newState;
-      });
-
-      setSchemaProcedures(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          if (key.startsWith(`${connectionId}-`)) {
-            delete newState[key];
-          }
-        });
-        return newState;
-      });
-
-      setSchemaFunctions(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          if (key.startsWith(`${connectionId}-`)) {
-            delete newState[key];
-          }
-        });
-        return newState;
-      });
-
-      setSchemaTriggers(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          if (key.startsWith(`${connectionId}-`)) {
-            delete newState[key];
-          }
-        });
-        return newState;
-      });
-
-      setSchemaIndexes(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          if (key.startsWith(`${connectionId}-`)) {
-            delete newState[key];
-          }
-        });
-        return newState;
-      });
-
-      setSchemaPackages(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(key => {
-          if (key.startsWith(`${connectionId}-`)) {
-            delete newState[key];
-          }
-        });
-        return newState;
-      });
-
-      setConnectionSequences(prev => {
-        const newState = { ...prev };
-        delete newState[connectionId];
-        return newState;
-      });
-
-      setConnectionUsers(prev => {
-        const newState = { ...prev };
-        delete newState[connectionId];
-        return newState;
-      });
-
-      // Si la conexión está expandida, recargar los esquemas
-      if (expandedConnections.has(connectionId)) {
-        await loadSchemas(connectionId);
-
-        // Recargar elementos que estén expandidos
-        const schemas = connectionSchemas[connectionId] || [];
-        for (const schema of schemas) {
-          const schemaKey = `${connectionId}-${schema.schema_name}`;
-
-          if (showTablesDropdown.has(schemaKey)) {
-            await loadTables(connectionId, schema.schema_name);
-          }
-          if (showViewsDropdown.has(schemaKey)) {
-            await loadViews(connectionId, schema.schema_name);
-          }
-          if (showProceduresDropdown.has(schemaKey)) {
-            await loadProcedures(connectionId, schema.schema_name);
-          }
-          if (showFunctionsDropdown.has(schemaKey)) {
-            await loadFunctions(connectionId, schema.schema_name);
-          }
-          if (showTriggersDropdown.has(schemaKey)) {
-            await loadTriggers(connectionId, schema.schema_name);
-          }
-          if (showIndexesDropdown.has(schemaKey)) {
-            await loadIndexes(connectionId, schema.schema_name);
-          }
-          if (showPackagesDropdown.has(schemaKey)) {
-            await loadPackages(connectionId, schema.schema_name);
-          }
-        }
-
-        if (showSequencesDropdown.has(connectionId)) {
-          await loadSequences(connectionId);
-        }
-        if (showUsersDropdown.has(connectionId)) {
-          await loadUsers(connectionId);
-        }
-      }
-
-    } catch (error) {
-      console.error('Error al refrescar conexión:', error);
-      alert(`Error al refrescar conexión: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
-  };
-
-  // Función CORREGIDA para alternar dropdown de tablas
-  const toggleTablesDropdown = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
-    const newDropdown = new Set(showTablesDropdown);
-
-    if (newDropdown.has(schemaKey)) {
-      newDropdown.delete(schemaKey);
-    } else {
-      newDropdown.add(schemaKey);
-      // Cargar tablas si no las tenemos
-      if (!schemaTables[schemaKey]) {
-        await loadTables(connectionId, schemaName);
-      }
-    }
-    setShowTablesDropdown(newDropdown);
-  };
-
-  // Dropdowns adicionales por objeto
-  const [showViewsDropdown, setShowViewsDropdown] = useState<Set<string>>(new Set());
-  const [showPackagesDropdown, setShowPackagesDropdown] = useState<Set<string>>(new Set());
-  const [showProceduresDropdown, setShowProceduresDropdown] = useState<Set<string>>(new Set());
-  const [showFunctionsDropdown, setShowFunctionsDropdown] = useState<Set<string>>(new Set());
-  const [showTriggersDropdown, setShowTriggersDropdown] = useState<Set<string>>(new Set());
-  const [showIndexesDropdown, setShowIndexesDropdown] = useState<Set<string>>(new Set());
-  const [showSequencesDropdown, setShowSequencesDropdown] = useState<Set<string>>(new Set());
-  const [showUsersDropdown, setShowUsersDropdown] = useState<Set<string>>(new Set());
-
-  const toggleGenericSchemaDropdown = async (
-    kind: 'views' | 'packages' | 'procedures' | 'functions' | 'triggers' | 'indexes' | 'sequences' | 'users',
-    connectionId: string,
-    schemaName: string
-  ) => {
-    // Para sequences y users usamos connectionId, para los demás schemaKey
-    const key = (kind === 'sequences' || kind === 'users')
-      ? connectionId
-      : `${connectionId}-${schemaName}`;
-
-    const dropdownMap = {
-      views: [showViewsDropdown, setShowViewsDropdown] as const,
-      packages: [showPackagesDropdown, setShowPackagesDropdown] as const,
-      procedures: [showProceduresDropdown, setShowProceduresDropdown] as const,
-      functions: [showFunctionsDropdown, setShowFunctionsDropdown] as const,
-      triggers: [showTriggersDropdown, setShowTriggersDropdown] as const,
-      indexes: [showIndexesDropdown, setShowIndexesDropdown] as const,
-      sequences: [showSequencesDropdown, setShowSequencesDropdown] as const,
-      users: [showUsersDropdown, setShowUsersDropdown] as const
-    } as const;
-
-    const [state, setState] = dropdownMap[kind];
-    const newDropdown = new Set(state);
-
-    if (newDropdown.has(key)) {
-      newDropdown.delete(key);
-    } else {
-      newDropdown.add(key);
-      if (kind === 'views' && !schemaViews[key]) await loadViews(connectionId, schemaName);
-      if (kind === 'procedures' && !schemaProcedures[key]) await loadProcedures(connectionId, schemaName);
-      if (kind === 'functions' && !schemaFunctions[key]) await loadFunctions(connectionId, schemaName);
-      if (kind === 'triggers' && !schemaTriggers[key]) await loadTriggers(connectionId, schemaName);
-      if (kind === 'indexes' && !schemaIndexes[key]) await loadIndexes(connectionId, schemaName);
-      if (kind === 'packages' && !schemaPackages[key]) {
-        await loadPackages(connectionId, schemaName);
-      }
-      if (kind === 'sequences' && !connectionSequences[connectionId]) await loadSequences(connectionId);
-      if (kind === 'users' && !connectionUsers[connectionId]) await loadUsers(connectionId);
-    }
-    setState(newDropdown);
-  };
-
-  const toggleConnection = async (connectionId: string) => {
-    const newExpanded = new Set(expandedConnections);
-
-    if (newExpanded.has(connectionId)) {
-      newExpanded.delete(connectionId);
-      setExpandedConnections(newExpanded);
-    } else {
-      newExpanded.add(connectionId);
-      setExpandedConnections(newExpanded);
-
-      if (!connectionSchemas[connectionId]) {
-        await loadSchemas(connectionId);
-      }
-    }
-  };
-
-
-  const selectConnection = async (connectionId: string) => {
-    try {
-      console.log('Intentando conectar a la base de datos:', connectionId);
-
-      const result = await apiService.connectToDatabase(connectionId);
-
-      console.log('Respuesta del servidor:', result);
+      const result = await apiService.getAllConnections();
 
       if (result.success) {
-        console.log('Conexión exitosa');
-        setSelectedConnection(connectionId);
 
-        if (onConnectionSelect) {
-          onConnectionSelect(connectionId);
-        }
-
-        await loadConnections();
+        const connectionsData = result.data || result.connections || result.data?.connections || [];
+        setConnections(connectionsData);
       } else {
-        console.error('Error en la respuesta del servidor:', result);
-        const errorMessage = result.error?.message || result.message || 'Error desconocido';
-        alert(`Error al conectar: ${errorMessage}`);
       }
     } catch (error) {
-      console.error('Error al conectar a la base de datos:', error);
-      alert(`Error de conexión: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
-  };
 
-  const loadSchemas = async (connectionId: string) => {
-    try {
-      setLoadingSchemas(prev => new Set(prev).add(connectionId));
-
-      const result = await apiService.getSchemas(connectionId);
-
-      if (result.success) {
-        console.log('Esquemas recibidos:', result.data);
-        const normalizedSchemas = result.data.map((schema: any) => ({
-          ...schema,
-          schema_name: schema.SCHEMA_NAME?.trim() || 'SYSDBA'
-        }));
-
-        setConnectionSchemas(prev => ({
-          ...prev,
-          [connectionId]: normalizedSchemas
-        }));
-      } else {
-        console.error('Error al cargar esquemas:', result.error);
-      }
-    } catch (error) {
-      console.error('Error al cargar esquemas:', error);
     } finally {
-      setLoadingSchemas(prev => {
+
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadConnections();
+  }, []);
+
+  useEffect(() => {
+  }, [loading, connections]);
+
+
+  useEffect(() => {
+  });
+
+
+  useEffect(() => {
+  }, [connections]);
+
+  const toggleConnectionExpansion = async (connectionId: string) => {
+
+    const connection = connections.find(conn => conn.id === connectionId);
+    if (connection && !connection.isActive) {
+      await selectConnection(connectionId);
+    }
+    
+
+    setExpandedConnections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(connectionId)) {
+        newSet.delete(connectionId);
+      } else {
+        newSet.add(connectionId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleGenericDropdown = (connectionId: string, dropdownType: string) => {
+    const setterMap: Record<string, React.Dispatch<React.SetStateAction<Set<string>>>> = {
+      'tables': setShowTablesDropdown,
+      'views': setShowViewsDropdown,
+      'procedures': setShowProceduresDropdown,
+      'functions': setShowFunctionsDropdown,
+      'triggers': setShowTriggersDropdown,
+      'indexes': setShowIndexesDropdown,
+      'packages': setShowPackagesDropdown,
+      'sequences': setShowSequencesDropdown,
+      'users': setShowUsersDropdown
+    };
+
+    const setter = setterMap[dropdownType];
+    if (setter) {
+      setter(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(connectionId)) {
+          newSet.delete(connectionId);
+    } else {
+          newSet.add(connectionId);
+        }
+        return newSet;
+      });
+    }
+  };
+
+  const loadTables = async (connectionId: string) => {
+    if (loadingTables.has(connectionId)) return;
+    
+    setLoadingTables(prev => new Set(prev).add(connectionId));
+    try {
+      const result = await apiService.getTables(connectionId);
+      if (result.success) {
+        const tables = result.data || [];
+
+        setConnectionTables(prev => ({
+          ...prev,
+          [connectionId]: tables
+        }));
+      }
+    } catch (error) {
+    } finally {
+      setLoadingTables(prev => {
         const newSet = new Set(prev);
         newSet.delete(connectionId);
         return newSet;
@@ -434,864 +210,465 @@ const DatabaseSidebar = forwardRef(({
     }
   };
 
-
-  const loadTables = async (connectionId: string, schemaName: string) => {
+  const loadViews = async (connectionId: string) => {
+    if (loadingViews.has(connectionId)) return;
+    
+    setLoadingViews(prev => new Set(prev).add(connectionId));
     try {
-      const schemaKey = `${connectionId}-${schemaName}`;
-      setLoadingTables(prev => new Set(prev).add(schemaKey));
-
-      const response = await apiService.getTables(connectionId, schemaName);
-
-      if (response.success) {
-        console.log('Tablas recibidas para esquema', schemaName, ':', response.data);
-        const normalizedTables = response.data.map((table: any) => ({
-          ...table,
-          table_name: table.TABLE_NAME?.trim() || '',
-          schema_name: table.SCHEMA_NAME?.trim() || schemaName
-        }));
-
-        setSchemaTables(prev => ({
+      const result = await apiService.getViews(connectionId);
+      if (result.success) {
+        setConnectionViews(prev => ({
           ...prev,
-          [schemaKey]: normalizedTables
+          [connectionId]: result.data || []
         }));
-      } else {
-        console.error('Error al cargar tablas:', response.error);
       }
     } catch (error) {
-      console.error('Error al cargar tablas:', error);
     } finally {
-      setLoadingTables(prev => {
+      setLoadingViews(prev => {
         const newSet = new Set(prev);
-        newSet.delete(`${connectionId}-${schemaName}`);
+        newSet.delete(connectionId);
         return newSet;
       });
     }
   };
 
-  const loadViews = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
+  const loadProcedures = async (connectionId: string) => {
+    if (loadingProcedures.has(connectionId)) return;
+    
+    setLoadingProcedures(prev => new Set(prev).add(connectionId));
     try {
-      setLoadingViews(prev => new Set(prev).add(schemaKey));
-      const response = await apiService.getViews(connectionId, schemaName);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          view_name: item.VIEW_NAME?.trim() || '',
-          schema_name: item.SCHEMA_NAME?.trim() || schemaName,
-          description: item.DESCRIPTION || item.description
+      const result = await apiService.getProcedures(connectionId);
+      if (result.success) {
+        setConnectionProcedures(prev => ({
+          ...prev,
+          [connectionId]: result.data || []
         }));
-        setSchemaViews(prev => ({ ...prev, [schemaKey]: normalized }));
       }
+    } catch (error) {
     } finally {
-      setLoadingViews(prev => { const s = new Set(prev); s.delete(schemaKey); return s; });
+      setLoadingProcedures(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(connectionId);
+        return newSet;
+      });
     }
   };
 
-
-  const loadProcedures = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
+  const loadFunctions = async (connectionId: string) => {
+    if (loadingFunctions.has(connectionId)) return;
+    
+    setLoadingFunctions(prev => new Set(prev).add(connectionId));
     try {
-      setLoadingProcedures(prev => new Set(prev).add(schemaKey));
-      const response = await apiService.getProcedures(connectionId, schemaName);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          procedure_name: item.PROCEDURE_NAME?.trim() || '',
-          schema_name: item.SCHEMA_NAME?.trim() || schemaName,
-          description: item.DESCRIPTION || item.description
+      const result = await apiService.getFunctions(connectionId);
+      if (result.success) {
+        setConnectionFunctions(prev => ({
+          ...prev,
+          [connectionId]: result.data || []
         }));
-        setSchemaProcedures(prev => ({ ...prev, [schemaKey]: normalized }));
       }
+    } catch (error) {
     } finally {
-      setLoadingProcedures(prev => { const s = new Set(prev); s.delete(schemaKey); return s; });
+      setLoadingFunctions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(connectionId);
+        return newSet;
+      });
     }
   };
 
-  const loadFunctions = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
+  const loadTriggers = async (connectionId: string) => {
+    if (loadingTriggers.has(connectionId)) return;
+    
+    setLoadingTriggers(prev => new Set(prev).add(connectionId));
     try {
-      setLoadingFunctions(prev => new Set(prev).add(schemaKey));
-      const response = await apiService.getFunctions(connectionId, schemaName);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          function_name: item.FUNCTION_NAME?.trim() || '',
-          schema_name: item.SCHEMA_NAME?.trim() || schemaName,
-          description: item.DESCRIPTION || item.description
+      const result = await apiService.getTriggers(connectionId);
+      if (result.success) {
+        setConnectionTriggers(prev => ({
+          ...prev,
+          [connectionId]: result.data || []
         }));
-        setSchemaFunctions(prev => ({ ...prev, [schemaKey]: normalized }));
       }
+    } catch (error) {
     } finally {
-      setLoadingFunctions(prev => { const s = new Set(prev); s.delete(schemaKey); return s; });
+      setLoadingTriggers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(connectionId);
+        return newSet;
+      });
     }
   };
 
-  const loadTriggers = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
+  const loadIndexes = async (connectionId: string) => {
+    if (loadingIndexes.has(connectionId)) return;
+    
+    setLoadingIndexes(prev => new Set(prev).add(connectionId));
     try {
-      setLoadingTriggers(prev => new Set(prev).add(schemaKey));
-      const response = await apiService.getTriggers(connectionId, schemaName);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          trigger_name: item.TRIGGER_NAME?.trim() || '',
-          relation_name: item.RELATION_NAME?.trim() || '',
-          schema_name: item.SCHEMA_NAME?.trim() || schemaName,
-          description: item.DESCRIPTION || item.description
+      const result = await apiService.getIndexes(connectionId);
+      if (result.success) {
+        setConnectionIndexes(prev => ({
+          ...prev,
+          [connectionId]: result.data || []
         }));
-        setSchemaTriggers(prev => ({ ...prev, [schemaKey]: normalized }));
       }
+    } catch (error) {
     } finally {
-      setLoadingTriggers(prev => { const s = new Set(prev); s.delete(schemaKey); return s; });
+      setLoadingIndexes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(connectionId);
+        return newSet;
+      });
     }
   };
 
-  const loadIndexes = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
-    try {
-      setLoadingIndexes(prev => new Set(prev).add(schemaKey));
-      const response = await apiService.getIndexes(connectionId, schemaName);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          index_name: item.INDEX_NAME?.trim() || '',
-          relation_name: item.RELATION_NAME?.trim() || '',
-          schema_name: item.SCHEMA_NAME?.trim() || schemaName,
-          is_unique: item.IS_UNIQUE,
-          is_inactive: item.IS_INACTIVE
-        }));
-        setSchemaIndexes(prev => ({ ...prev, [schemaKey]: normalized }));
-      }
-    } finally {
-      setLoadingIndexes(prev => { const s = new Set(prev); s.delete(schemaKey); return s; });
+  const loadPackages = async (connectionId: string) => {
+    if (loadingPackages.has(connectionId)) {
+      return;
     }
-  };
+    
+    setLoadingPackages(prev => new Set(prev).add(connectionId));
+    
+    try {
+      const result = await apiService.getPackages(connectionId);
+      
+      if (result.success) {
+        const packages = result.data || [];
 
-  const loadPackages = async (connectionId: string, schemaName: string) => {
-    const schemaKey = `${connectionId}-${schemaName}`;
-    try {
-      setLoadingPackages(prev => new Set(prev).add(schemaKey));
-      const response = await apiService.getPackages(connectionId, schemaName);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          package_name: item.PACKAGE_NAME?.trim() || '',
-          schema_name: item.SCHEMA_NAME?.trim() || schemaName,
-          description: item.DESCRIPTION || item.description
+        
+        if (packages.length > 0) {
+
+        }
+        
+        setConnectionPackages(prev => ({
+          ...prev,
+          [connectionId]: packages
         }));
-        setSchemaPackages(prev => ({ ...prev, [schemaKey]: normalized }));
+        
+      } else {
+
+      }
+    } catch (error) {
+      if (error instanceof Error) {
       }
     } finally {
-      setLoadingPackages(prev => { const s = new Set(prev); s.delete(schemaKey); return s; });
-    }
+      setLoadingPackages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(connectionId);
+        return newSet;
+      });    }
   };
 
   const loadSequences = async (connectionId: string) => {
-    try {
+    if (loadingSequences.has(connectionId)) return;
+    
       setLoadingSequences(prev => new Set(prev).add(connectionId));
-      const response = await apiService.getSequences(connectionId);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          sequence_name: item.SEQUENCE_NAME?.trim() || item.GENERATOR_NAME?.trim() || '',
-          description: item.DESCRIPTION || item.description
+    try {
+      const result = await apiService.getSequences(connectionId);
+      if (result.success) {
+        setConnectionSequences(prev => ({
+          ...prev,
+          [connectionId]: result.data || []
         }));
-        setConnectionSequences(prev => ({ ...prev, [connectionId]: normalized }));
       }
+    } catch (error) {
     } finally {
-      setLoadingSequences(prev => { const s = new Set(prev); s.delete(connectionId); return s; });
+      setLoadingSequences(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(connectionId);
+        return newSet;
+      });
     }
   };
 
   const loadUsers = async (connectionId: string) => {
+    if (loadingUsers.has(connectionId)) return;
+    
+    setLoadingUsers(prev => new Set(prev).add(connectionId));
     try {
-      setLoadingUsers(prev => new Set(prev).add(connectionId));
-      const response = await apiService.getUsers(connectionId);
-      if (response.success) {
-        const normalized = response.data.map((item: any) => ({
-          ...item,
-          user_name: item.USER_NAME?.trim() || '',
-          active: item.ACTIVE,
-          plugin: item.PLUGIN,
-          first_name: item.FIRST_NAME?.trim() || '',
-          last_name: item.LAST_NAME?.trim() || ''
+      const result = await apiService.getUsers(connectionId);
+      if (result.success) {
+        setConnectionUsers(prev => ({
+          ...prev,
+          [connectionId]: result.data || []
         }));
-        setConnectionUsers(prev => ({ ...prev, [connectionId]: normalized }));
       }
+    } catch (error) {
     } finally {
-      setLoadingUsers(prev => { const s = new Set(prev); s.delete(connectionId); return s; });
+      setLoadingUsers(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(connectionId);
+          return newSet;
+        });
     }
   };
 
-  // Función para desconectar una base de datos
+  const selectConnection = async (connectionId: string) => {
+    try {
+      const result = await apiService.connectToDatabase(connectionId);
+      
+      if (result.success) {
+        setConnections(prev => prev.map(conn => 
+          conn.id === connectionId ? { ...conn, isActive: true } : conn
+        ));
+        
+      }
+    } catch (error) {
+    }
+    
+    setSelectedConnection(connectionId);
+    if (onConnectionSelect) {
+      onConnectionSelect(connectionId);
+    }
+  };
+
   const disconnectDatabase = async (connectionId: string) => {
     try {
       const result = await apiService.disconnectFromDatabase(connectionId);
-
+      
       if (result.success) {
-        await loadConnections();
-
-        // Limpiar todos los datos relacionados
-        setConnectionSchemas(prev => {
-          const newState = { ...prev };
-          delete newState[connectionId];
-          return newState;
-        });
-
-        setSchemaTables(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaViews(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaProcedures(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaFunctions(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaTriggers(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaIndexes(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaPackages(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setConnectionSequences(prev => {
-          const newState = { ...prev };
-          delete newState[connectionId];
-          return newState;
-        });
-
-        setConnectionUsers(prev => {
-          const newState = { ...prev };
-          delete newState[connectionId];
-          return newState;
-        });
-
-        // Limpiar estados de expansión y dropdowns
+        
+        setConnections(prev => prev.map(conn => 
+          conn.id === connectionId ? { ...conn, isActive: false } : conn
+        ));
+        
         setExpandedConnections(prev => {
           const newSet = new Set(prev);
           newSet.delete(connectionId);
           return newSet;
         });
-
-        setShowSchemasDropdown(prev => {
+        
+        setConnectionTables(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        setConnectionViews(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        setConnectionProcedures(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        setConnectionFunctions(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        setConnectionTriggers(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        setConnectionIndexes(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        setConnectionPackages(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        setConnectionSequences(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        setConnectionUsers(prev => {
+          const newState = { ...prev };
+          delete newState[connectionId];
+          return newState;
+        });
+        
+        setShowTablesDropdown(prev => {
           const newSet = new Set(prev);
           newSet.delete(connectionId);
           return newSet;
         });
-
-        setShowTablesDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
         setShowViewsDropdown(prev => {
           const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
+          newSet.delete(connectionId);
           return newSet;
         });
-
-        setShowPackagesDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
         setShowProceduresDropdown(prev => {
           const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
+          newSet.delete(connectionId);
           return newSet;
         });
-
         setShowFunctionsDropdown(prev => {
           const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
+          newSet.delete(connectionId);
           return newSet;
         });
-
         setShowTriggersDropdown(prev => {
           const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
+          newSet.delete(connectionId);
           return newSet;
         });
-
         setShowIndexesDropdown(prev => {
           const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
+          newSet.delete(connectionId);
           return newSet;
         });
-
+        setShowPackagesDropdown(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(connectionId);
+          return newSet;
+        });
         setShowSequencesDropdown(prev => {
           const newSet = new Set(prev);
           newSet.delete(connectionId);
           return newSet;
         });
-
         setShowUsersDropdown(prev => {
           const newSet = new Set(prev);
           newSet.delete(connectionId);
           return newSet;
         });
+        
       }
     } catch (error) {
-      console.error('Error al desconectar:', error);
     }
   };
 
-  // Función para mostrar el menú contextual de objetos
-  const showObjectContextMenu = (
-    e: React.MouseEvent,
-    connectionId: string,
-    schemaName: string,
-    objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'schema' | 'user' | 'package',
-    objectName: string
-  ) => {
+  const deleteConnection = async (connectionId: string) => {
+    try {
+      const result = await apiService.removeConnection(connectionId);
+      if (result.success) {
+        setConnections(prev => prev.filter(conn => conn.id !== connectionId));
+      }
+    } catch (error) {
+    }
+  };
+
+  const refreshConnection = async (connectionId: string) => {
+    await Promise.all([
+      loadTables(connectionId),
+      loadViews(connectionId),
+      loadProcedures(connectionId),
+      loadFunctions(connectionId),
+      loadTriggers(connectionId),
+      loadIndexes(connectionId),
+      loadPackages(connectionId),
+      loadSequences(connectionId),
+      loadUsers(connectionId)
+    ]);
+  };
+
+  const showObjectContextMenu = (e: React.MouseEvent, connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string) => {
     e.preventDefault();
-    console.log('showObjectContextMenu called with:', { connectionId, schemaName, objectType, objectName });
     setObjectContextMenu({
       x: e.clientX,
       y: e.clientY,
       connectionId,
-      schemaName,
-      objectType, // Mantener el tipo original
+      objectType, 
       objectName,
       isVisible: true
     });
   };
 
-  // Función para cerrar el menú contextual de objetos
-  const closeObjectContextMenu = () => {
-    setObjectContextMenu(prev => ({ ...prev, isVisible: false }));
-  };
-
-  // Función para manejar la acción de crear tabla
-  const handleCreateTable = () => {
-    if (onCreateTable) {
-      onCreateTable(objectContextMenu.connectionId, objectContextMenu.schemaName);
-    }
-    closeObjectContextMenu();
-  };
-
-  // Función para manejar la acción de crear vista
-  const handleCreateView = () => {
-    if (onCreateView) {
-      onCreateView(objectContextMenu.connectionId, objectContextMenu.schemaName);
-    }
-    closeObjectContextMenu();
-  };
-
-  // Función para manejar la acción de ver DDL
-  const handleViewDDL = () => {
-    if (onViewDDL && objectContextMenu.objectType !== 'schema') {
-      onViewDDL(
-        objectContextMenu.connectionId,
-        objectContextMenu.objectType as 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package',
-        objectContextMenu.objectName,
-        objectContextMenu.schemaName
-      );
-    }
-    closeObjectContextMenu();
-  };
-
-  // Función para manejar la acción de ver tabla
-  const handleViewTable = () => {
-    if (onViewTable && objectContextMenu.objectType === 'table') {
-      onViewTable(
-        objectContextMenu.connectionId,
-        objectContextMenu.objectName,
-        objectContextMenu.schemaName
-      );
-    }
-    closeObjectContextMenu();
-  };
-
-  // Función para manejar la acción de modificar DDL
-  const handleModifyDDL = () => {
-    if (onModifyDDL && objectContextMenu.objectType !== 'schema') {
-      onModifyDDL(
-        objectContextMenu.connectionId,
-        objectContextMenu.objectType as 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package',
-        objectContextMenu.objectName,
-        objectContextMenu.schemaName
-      );
-    }
-    closeObjectContextMenu();
-  };
-
-  // Función para eliminar una conexión
-  const deleteConnection = async (connectionId: string) => {
-    try {
-      console.log('Eliminando conexión:', connectionId);
-
-      const result = await apiService.removeConnection(connectionId);
-
-      console.log('Respuesta del servidor:', result);
-
-      if (result.success) {
-        console.log('Conexión eliminada exitosamente');
-
-        // Limpiar todos los datos relacionados
-        setConnectionSchemas(prev => {
-          const newState = { ...prev };
-          delete newState[connectionId];
-          return newState;
-        });
-
-        setSchemaTables(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaViews(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaProcedures(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaFunctions(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaTriggers(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaIndexes(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setSchemaPackages(prev => {
-          const newState = { ...prev };
-          Object.keys(newState).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              delete newState[key];
-            }
-          });
-          return newState;
-        });
-
-        setConnectionSequences(prev => {
-          const newState = { ...prev };
-          delete newState[connectionId];
-          return newState;
-        });
-
-        setConnectionUsers(prev => {
-          const newState = { ...prev };
-          delete newState[connectionId];
-          return newState;
-        });
-
-        setExpandedConnections(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(connectionId);
-          return newSet;
-        });
-
-        setShowSchemasDropdown(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(connectionId);
-          return newSet;
-        });
-
-        setShowTablesDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
-        setShowViewsDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
-        setShowPackagesDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
-        setShowProceduresDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
-        setShowFunctionsDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
-        setShowTriggersDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
-        setShowIndexesDropdown(prev => {
-          const newSet = new Set(prev);
-          Array.from(prev).forEach(key => {
-            if (key.startsWith(`${connectionId}-`)) {
-              newSet.delete(key);
-            }
-          });
-          return newSet;
-        });
-
-        setShowSequencesDropdown(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(connectionId);
-          return newSet;
-        });
-
-        setShowUsersDropdown(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(connectionId);
-          return newSet;
-        });
-
-        await loadConnections();
-      } else {
-        console.error('Error al eliminar conexión:', result.message);
-        alert(`Error al eliminar conexión: ${result.message}`);
+  const handleTableSelect = (connectionId: string, tableName: string) => {
+    if (onTableSelect) {
+      onTableSelect(connectionId, tableName);
+      if (onViewChange) {
+        onViewChange('table');
       }
-    } catch (error) {
-      console.error('Error al eliminar conexión:', error);
-      alert(`Error al eliminar conexión: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 
-  // ========== RENDERIZADO DEL COMPONENTE ==========
-  return (
-    <>
-      <div className="sidebar-container">
-        {/* Contenedor principal del sidebar */}
-        <div className={`database-sidebar ${sidebarState}`}>
-          <button
-            className="sidebar-toggle"
-            onClick={() => {
-              setSidebarState(prev =>
-                prev === 'normal' ? 'collapsed' :
-                  prev === 'collapsed' ? 'expanded' : 'normal'
-              );
-            }}
-          >
-            {sidebarState === 'collapsed' ? <span className="expand-right-icon"></span> :
-              sidebarState === 'expanded' ? <span className="expand-left-icon"></span> : <span className="expand-center-icon"></span>}
-          </button>
+  const handleObjectSelect = (connectionId: string, objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'package' | 'user', objectName: string) => {
+    if (onObjectSelect) {
+      onObjectSelect(connectionId, objectType, objectName);
+      if (onViewChange) {
+        onViewChange('object');
+      }
+    }
+  };
 
-          {/* Encabezado de la barra lateral */}
+  const handleCreateTable = (connectionId: string) => {
+    if (onCreateTable) {
+      onCreateTable(connectionId);
+    }
+  };
+
+  const handleCreateView = (connectionId: string) => {
+    if (onCreateView) {
+      onCreateView(connectionId);
+    }
+  };
+
+  const handleViewDDL = (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string) => {
+    if (onViewDDL) {
+      onViewDDL(connectionId, objectType, objectName);
+      if (onViewChange) {
+        onViewChange('object');
+      }
+    }
+  };
+
+  const handleModifyDDL = (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user' | 'package', objectName: string) => {
+    if (onModifyDDL) {
+      onModifyDDL(connectionId, objectType, objectName);
+      if (onViewChange) {
+        onViewChange('object');
+      }
+    }
+  };
+
+  const handleViewTable = (connectionId: string, tableName: string) => {
+    if (onViewTable) {
+      onViewTable(connectionId, tableName);
+      if (onViewChange) {
+        onViewChange('table');
+      }
+    }
+  };
+
+  return (
+        <div className={`database-sidebar ${sidebarState}`}>
           <div className="sidebar-header">
-            <h3>Conexiones de Base de Datos</h3>
-            <div style={{ display: 'flex', gap: '5px' }}>
-              <button
-                className="refresh-btn"
-                onClick={loadConnections}
-                disabled={loading}
-              >
-                <span className="refresh-icon"></span>
-              </button>
-              <button
-                className="refresh-btn"
-                onClick={() => onAddConnection && onAddConnection()}
-              >
+        <h3>Conexiones</h3>
+        <button className="add-connection-btn" onClick={onAddConnection}>
                 <span className="add-icon"></span>
               </button>
-            </div>
           </div>
 
-          {loading && <div className="loading">Cargando...</div>}
+      <div className="sidebar-content" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 100px)' }}>
 
-          {/* Lista de conexiones como estructura de árbol */}
+        {loading && (
+          <div className="loading">Cargando conexiones...</div>
+        )}
+
           <div className="connections-list">
             {connections.map((connection) => {
               const isExpanded = expandedConnections.has(connection.id);
-              const schemas = connectionSchemas[connection.id] || [];
-              const isLoadingSchemas = loadingSchemas.has(connection.id);
-              const schemaItems: React.ReactNode[] = [];              // Procesar los esquemas y sus elementos
-              schemas.forEach(schema => {
-                const schemaKey = `${connection.id}-${schema.schema_name}`;
-                const tables = schemaTables[schemaKey] || [];
-                const views = schemaViews[schemaKey] || [];
-                const procedures = schemaProcedures[schemaKey] || [];
-                const functions = schemaFunctions[schemaKey] || [];
-                const triggers = schemaTriggers[schemaKey] || [];
-                const indexes = schemaIndexes[schemaKey] || [];
-                const packages = schemaPackages[schemaKey] || [];
+            const tables = connectionTables[connection.id] || [];
+            const views = connectionViews[connection.id] || [];
+            const procedures = connectionProcedures[connection.id] || [];
+            const functions = connectionFunctions[connection.id] || [];
+            const triggers = connectionTriggers[connection.id] || [];
+            const indexes = connectionIndexes[connection.id] || [];
+            const packages = connectionPackages[connection.id] || [];
+            const sequences = connectionSequences[connection.id] || [];
+            const users = connectionUsers[connection.id] || [];
 
-                // Añadir elementos del esquema
-                const schemaChildren: React.ReactNode[] = [];
-
-                // Añadir tablas
-                if (tables.length > 0) {
-                  tables.forEach(table => {
-                    schemaChildren.push(
-                                              <div key={`table-${schemaKey}-${table.table_name}`} className="tree-item table">
-                        <div className="tree-content" onClick={() => onTableSelect && onTableSelect(connection.id, table.table_name, schema.schema_name)}>
-                          <span className="tree-icon table-icon-img"></span>
-                          <span className="tree-label">{table.table_name}</span>
-                        </div>
-                      </div>
-                    );
-                  });
-                }
-
-                // Añadir vistas
-                if (views.length > 0) {
-                  views.forEach(view => {
-                    schemaChildren.push(
-                      <div key={`view-${schemaKey}-${view.view_name}`} className="tree-item view">
-                        <div className="tree-content">
-                          <span className="tree-icon view-icon-img"></span>
-                          <span className="tree-label">{view.view_name}</span>
-                        </div>
-                      </div>
-                    );
-                  });
-                }
-
-                // Añadir procedimientos
-                if (procedures.length > 0) {
-                  procedures.forEach(proc => {
-                    schemaChildren.push(
-                      <div key={`proc-${schemaKey}-${proc.procedure_name}`} className="tree-item procedure">
-                        <div className="tree-content">
-                          <span className="tree-icon procedure-icon-img"></span>
-                          <span className="tree-label">{proc.procedure_name}</span>
-                        </div>
-                      </div>
-                    );
-                  });
-                }
-
-                // Añadir funciones
-                if (functions.length > 0) {
-                  functions.forEach(fn => {
-                    schemaChildren.push(
-                      <div key={`fn-${schemaKey}-${fn.function_name}`} className="tree-item function">
-                        <div className="tree-content">
-                          <span className="tree-icon function-icon-img"></span>
-                          <span className="tree-label">{fn.function_name}</span>
-                        </div>
-                      </div>
-                    );
-                  });
-                }
-
-                // Añadir triggers
-                if (triggers.length > 0) {
-                  triggers.forEach(tr => {
-                    schemaChildren.push(
-                      <div key={`tr-${schemaKey}-${tr.trigger_name}`} className="tree-item trigger">
-                        <div className="tree-content">
-                          <span className="tree-icon trigger-icon-img"></span>
-                          <span className="tree-label">{tr.trigger_name}</span>
-                        </div>
-                      </div>
-                    );
-                  });
-                }
-
-                // Añadir índices
-                if (indexes.length > 0) {
-                  indexes.forEach(ix => {
-                    schemaChildren.push(
-                      <div key={`ix-${schemaKey}-${ix.index_name}`} className="tree-item index">
-                        <div className="tree-content">
-                          <span className="tree-icon index-icon-img"></span>
-                          <span className="tree-label">{ix.index_name}</span>
-                        </div>
-                      </div>
-                    );
-                  });
-                }
-
-                // Añadir paquetes
-                if (packages.length > 0) {
-                  packages.forEach(pkg => {
-                    schemaChildren.push(
-                      <div key={`pkg-${schemaKey}-${pkg.package_name}`} className="tree-item package">
-                        <div className="tree-content">
-                          <span className="tree-icon package-icon-img"></span>
-                          <span className="tree-label">{pkg.package_name}</span>
-                        </div>
-                      </div>
-                    );
-                  });
-                }
-
-                // Añadir el esquema con sus elementos hijos
-                if (schemaChildren.length > 0) {
-                  schemaItems.push(
-                    <div key={`schema-${schemaKey}`} className="tree-item schema">
-                      <div className="tree-content" onClick={() => toggleSchemasDropdown(connection.id)}>
-                        <span className="tree-icon schema-icon-img"></span>
-                        <span className="tree-label">{schema.schema_name}</span>
-                      </div>
-                      {showSchemasDropdown.has(connection.id) && (
-                        <div className="tree-structure">
-                          {schemaChildren}
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-              });
+            const isLoadingTables = loadingTables.has(connection.id);
+            const isLoadingViews = loadingViews.has(connection.id);
+            const isLoadingProcedures = loadingProcedures.has(connection.id);
+            const isLoadingFunctions = loadingFunctions.has(connection.id);
+            const isLoadingTriggers = loadingTriggers.has(connection.id);
+            const isLoadingIndexes = loadingIndexes.has(connection.id);
+            const isLoadingPackages = loadingPackages.has(connection.id);
+            const isLoadingSequences = loadingSequences.has(connection.id);
+            const isLoadingUsers = loadingUsers.has(connection.id);
 
               return (
-                <div key={connection.id} className="tree-item connection">
-                  <div
-                    className="tree-content"
-                    onClick={() => {
-                      { }
-                      toggleConnection(connection.id);
-                      selectConnection(connection.id);
-                    }}
+              <div key={connection.id} className="tree-item connection-item">
+                <div 
+                  className="tree-content connection-content"
+                  onClick={() => toggleConnectionExpansion(connection.id)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setContextMenu({
@@ -1312,499 +689,513 @@ const DatabaseSidebar = forwardRef(({
                   {/* Contenido expandible */}
                   {isExpanded && (
                     <div className="tree-structure">
-                      {/* Sección de esquemas */}
-                      <div className="schemas-section">
-                        {/* Header clickeable para esquemas */}
-                        <div
-                          className="section-header clickeable-header"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSchemasDropdown(connection.id);
-                          }}
-                        >
-                          <span className={`expand-icon ${showSchemasDropdown.has(connection.id) ? 'expanded' : ''}`}>
-                            {showSchemasDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                          </span>
+                      <>
+                        {/* Tablas */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionTables[connection.id]) {
+                                loadTables(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'tables');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'table', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showTablesDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showTablesDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Tablas</span>
+                            <span className="schema-count">({tables.length})</span>
+                            {isLoadingTables && <span className="loading-indicator loading-icon"></span>}
+                          </div>
 
-                          <span className="section-title">Esquemas</span>
-                          <span className="schema-count">({schemas.length})</span>
-
-                          {isLoadingSchemas && <span className="loading-indicator loading-icon"></span>}
+                          {showTablesDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element"> 
+                              <div className="tables-list">
+                                {tables.map((table: any) => {
+                                  const tableName = table.table_name || table.name || table.TABLE_NAME || table.NAME || 'Sin nombre';
+                                  
+                                  return (
+                                    <div
+                                      key={`table-${connection.id}-${tableName}`}
+                                      className="table-item"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTableSelect(connection.id, tableName);
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'table', tableName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{tableName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {tables.length === 0 && !isLoadingTables && (
+                                <div className="no-schemas-message">
+                                  No hay tablas disponibles
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Dropdown de esquemas */}
-                        {showSchemasDropdown.has(connection.id) && (
-                          <div className="schemas-dropdown">
-                            {schemas.map((schema) => {
-                              const schemaKey = `${connection.id}-${schema.schema_name}`;
-                              const tables = schemaTables[schemaKey] || [];
-                              const isLoadingTables = loadingTables.has(schemaKey);
-
-                              return (
-                                <div 
-                                  key={`schema-${connection.id}-${schema.schema_name}`} 
-                                  className="schema-item"
-                                >
-
-                                  {/* NUEVA SECCIÓN: Header clickeable para tablas */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleTablesDropdown(connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'table', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showTablesDropdown.has(schemaKey) ? 'expanded' : ''}`}>
-                                      {showTablesDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-
-                                    <span className="section-title">Tablas</span>
-                                    <span className="schema-count">({tables.length})</span>
-
-                                    {isLoadingTables && <span className="loading-indicator loading-icon"></span>}
-                                  </div>
-
-                                  {/* DROPDOWN DE TABLAS - Solo se muestra si está expandido */}
-                                  {showTablesDropdown.has(schemaKey) && (
-                                    <div className="schemas-dropdown schema-element"> {/* Reutilizamos la clase CSS */}
-                                      <div className="tables-list">
-                                        {tables.map((table) => (
-                                          <div
-                                            key={`table-${connection.id}-${schema.schema_name}-${table.table_name}`}
-                                            className="table-item"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              console.log('Table clicked:', table.table_name, 'in schema:', schema.schema_name);
-                                              if (onTableSelect) {
-                                                console.log('Calling onTableSelect...');
-                                                onTableSelect(connection.id, table.table_name, schema.schema_name);
-                                                if (onViewChange) {
-                                                  console.log('Calling onViewChange...');
-                                                  onViewChange('table'); // Doble seguro para cambiar vista
-                                                }
-                                              } else {
-                                                console.log('onTableSelect is not defined');
-                                              }
-                                            }}
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'table', table.table_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{table.table_name}</span>
-                                            <span className="table-date">
-                                            </span>
-                                          </div>
-                                        ))}
-                                      </div>
-
-                                      {/* Mensaje cuando no hay tablas */}
-                                      {tables.length === 0 && !isLoadingTables && (
-                                        <div className="no-schemas-message">
-                                          No hay tablas disponibles
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Vistas */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleGenericSchemaDropdown('views', connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'view', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showViewsDropdown.has(schemaKey) ? 'expanded' : ''}`}>
-                                      {showViewsDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-                                    <span className="section-title">Vistas</span>
-                                    <span className="schema-count">({(schemaViews[schemaKey] || []).length})</span>
-                                    {loadingViews.has(schemaKey) && <span className="loading-indicator loading-icon"></span>}
-                                  </div>
-                                  {showViewsDropdown.has(schemaKey) && (
-                                    <div className="schemas-dropdown schema-element">
-                                      <div className="tables-list">
-                                        {(schemaViews[schemaKey] || []).map((view) => (
-                                          <div 
-                                            key={`view-${connection.id}-${schema.schema_name}-${view.view_name}`} 
-                                            className="table-item clickeable-item"
-                                            onClick={() => {
-                                              if (onObjectSelect) {
-                                                onObjectSelect(connection.id, 'view', view.view_name, schema.schema_name);
-                                              }
-                                            }}
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'view', view.view_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{view.view_name}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {(schemaViews[schemaKey] || []).length === 0 && !loadingViews.has(schemaKey) && (
-                                        <div className="no-schemas-message">No hay vistas disponibles</div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Procedimientos */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleGenericSchemaDropdown('procedures', connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'procedure', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showProceduresDropdown.has(schemaKey) ? 'expanded' : ''}`}>
-                                      {showProceduresDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-                                    <span className="section-title">Procedimientos</span>
-                                    <span className="schema-count">({(schemaProcedures[schemaKey] || []).length})</span>
-                                    {loadingProcedures.has(schemaKey) && <span className="loading-indicator loading-icon"></span>}
-                                  </div>
-                                  {showProceduresDropdown.has(schemaKey) && (
-                                    <div className="schemas-dropdown schema-element">
-                                      <div className="tables-list">
-                                        {(schemaProcedures[schemaKey] || []).map((proc) => (
-                                          <div 
-                                            key={`proc-${connection.id}-${schema.schema_name}-${proc.procedure_name}`} 
-                                            className="table-item clickeable-item"
-                                            onClick={() => {
-                                              if (onObjectSelect) {
-                                                onObjectSelect(connection.id, 'procedure', proc.procedure_name, schema.schema_name);
-                                              }
-                                            }}
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'procedure', proc.procedure_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{proc.procedure_name}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {(schemaProcedures[schemaKey] || []).length === 0 && !loadingProcedures.has(schemaKey) && (
-                                        <div className="no-schemas-message">No hay procedimientos disponibles</div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Funciones */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleGenericSchemaDropdown('functions', connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'function', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showFunctionsDropdown.has(schemaKey) ? 'expanded' : ''}`}>
-                                      {showFunctionsDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-                                    <span className="section-title">Funciones</span>
-                                    <span className="schema-count">({(schemaFunctions[schemaKey] || []).length})</span>
-                                    {loadingFunctions.has(schemaKey) && <span className="loading-indicator loading-icon"></span>}
-                                  </div>
-                                  {showFunctionsDropdown.has(schemaKey) && (
-                                    <div className="schemas-dropdown schema-element">
-                                      <div className="tables-list">
-                                        {(schemaFunctions[schemaKey] || []).map((fn) => (
-                                          <div 
-                                            key={`fn-${connection.id}-${schema.schema_name}-${fn.function_name}`} 
-                                            className="table-item clickeable-item"
-                                            onClick={() => {
-                                              if (onObjectSelect) {
-                                                onObjectSelect(connection.id, 'function', fn.function_name, schema.schema_name);
-                                              }
-                                            }}
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'function', fn.function_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{fn.function_name}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {(schemaFunctions[schemaKey] || []).length === 0 && !loadingFunctions.has(schemaKey) && (
-                                        <div className="no-schemas-message">No hay funciones disponibles</div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Triggers */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleGenericSchemaDropdown('triggers', connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'trigger', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showTriggersDropdown.has(schemaKey) ? 'expanded' : ''}`}>
-                                      {showTriggersDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-                                    <span className="section-title">Triggers</span>
-                                    <span className="schema-count">({(schemaTriggers[schemaKey] || []).length})</span>
-                                    {loadingTriggers.has(schemaKey) && <span className="loading-indicator loading-icon"></span>}
-                                  </div>
-                                  {showTriggersDropdown.has(schemaKey) && (
-                                    <div className="schemas-dropdown schema-element">
-                                      <div className="tables-list">
-                                        {(schemaTriggers[schemaKey] || []).map((tr) => (
-                                          <div 
-                                            key={`tr-${connection.id}-${schema.schema_name}-${tr.trigger_name}`} 
-                                            className="table-item clickeable-item"
-                                            onClick={() => {
-                                              if (onObjectSelect) {
-                                                onObjectSelect(connection.id, 'trigger', tr.trigger_name, schema.schema_name);
-                                              }
-                                            }}
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'trigger', tr.trigger_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{tr.trigger_name}</span>
-                                            <span className="table-date">{tr.relation_name || ''}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {(schemaTriggers[schemaKey] || []).length === 0 && !loadingTriggers.has(schemaKey) && (
-                                        <div className="no-schemas-message">No hay triggers disponibles</div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Índices */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleGenericSchemaDropdown('indexes', connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'index', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showIndexesDropdown.has(schemaKey) ? 'expanded' : ''}`}>
-                                      {showIndexesDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-                                    <span className="section-title">Índices</span>
-                                    <span className="schema-count">({(schemaIndexes[schemaKey] || []).length})</span>
-                                    {loadingIndexes.has(schemaKey) && <span className="loading-indicator loading-icon"></span>}
-                                  </div>
-                                  {showIndexesDropdown.has(schemaKey) && (
-                                    <div className="schemas-dropdown schema-element">
-                                      <div className="tables-list">
-                                        {(schemaIndexes[schemaKey] || []).map((ix) => (
-                                          <div
-                                            key={`ix-${connection.id}-${schema.schema_name}-${ix.index_name}`}
-                                            className="table-item clickeable-item"
-                                            onClick={() => {
-                                              if (onObjectSelect) {
-                                                onObjectSelect(connection.id, 'index', ix.index_name, schema.schema_name);
-                                              }
-                                            }}
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'index', ix.index_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{ix.index_name}</span>
-                                            <span className="table-date">{ix.relation_name || ''}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {(schemaIndexes[schemaKey] || []).length === 0 && !loadingIndexes.has(schemaKey) && (
-                                        <div className="no-schemas-message">No hay índices disponibles</div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Paquetes */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleGenericSchemaDropdown('packages', connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'package', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showPackagesDropdown.has(schemaKey) ? 'expanded' : ''}`}>
-                                      {showPackagesDropdown.has(schemaKey) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-                                    <span className="section-title">Paquetes</span>
-                                    <span className="schema-count">({(schemaPackages[schemaKey] || []).length})</span>
-                                    {loadingPackages.has(schemaKey) && <span className="loading-indicator loading-icon"></span>}
-
-                                  </div>
-                                  {showPackagesDropdown.has(schemaKey) && (
-                                    <div className="schemas-dropdown schema-element">
-                                      <div className="tables-list">
-                                        {(schemaPackages[schemaKey] || []).map((pkg) => (
-                                          <div
-                                            key={`pkg-${connection.id}-${schema.schema_name}-${pkg.package_name}`}
-                                            className="table-item clickeable-item"
-                                            onClick={() => {
-                                              if (onObjectSelect) {
-                                                onObjectSelect(connection.id, 'package', pkg.package_name, schema.schema_name);
-                                              }
-                                            }}
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'package', pkg.package_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{pkg.package_name}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {(schemaPackages[schemaKey] || []).length === 0 && !loadingPackages.has(schemaKey) && (
-                                        <div className="no-schemas-message">No hay paquetes disponibles</div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Secuencias */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleGenericSchemaDropdown('sequences', connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'sequence', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showSequencesDropdown.has(connection.id) ? 'expanded' : ''}`}>
-                                      {showSequencesDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-                                    <span className="section-title">Secuencias</span>
-                                    <span className="schema-count">({(connectionSequences[connection.id] || []).length})</span>
-                                    {loadingSequences.has(connection.id) && <span className="loading-indicator loading-icon"></span>}
-                                  </div>
-                                  {showSequencesDropdown.has(connection.id) && (
-                                    <div className="schemas-dropdown schema-element">
-                                      <div className="tables-list">
-                                        {(connectionSequences[connection.id] || []).map((seq) => (
-                                          <div
-                                            key={`seq-${connection.id}-${seq.sequence_name}`}
-                                            className="table-item clickeable-item"
-                                            onClick={() => {
-                                              if (onObjectSelect) {
-                                                onObjectSelect(connection.id, 'sequence', seq.sequence_name, schema.schema_name);
-                                              }
-                                            }}
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'sequence', seq.sequence_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{seq.sequence_name}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {(connectionSequences[connection.id] || []).length === 0 && !loadingSequences.has(connection.id) && (
-                                        <div className="no-schemas-message">No hay secuencias disponibles</div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Usuarios */}
-                                  <div
-                                    className="section-header clickeable-header schema-category"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleGenericSchemaDropdown('users', connection.id, schema.schema_name);
-                                    }}
-                                    onContextMenu={(e) => {
-                                      e.stopPropagation();
-                                      showObjectContextMenu(e, connection.id, schema.schema_name, 'user', '');
-                                    }}
-                                  >
-                                    <span className={`expand-icon ${showUsersDropdown.has(connection.id) ? 'expanded' : ''}`}>
-                                      {showUsersDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
-                                    </span>
-                                    <span className="section-title">Usuarios</span>
-                                    <span className="schema-count">({(connectionUsers[connection.id] || []).length})</span>
-                                    {loadingUsers.has(connection.id) && <span className="loading-indicator loading-icon"></span>}
-                                  </div>
-                                  {showUsersDropdown.has(connection.id) && (
-                                    <div className="schemas-dropdown schema-element">
-                                      <div className="tables-list">
-                                        {(connectionUsers[connection.id] || []).map((usr) => (
-                                          <div
-                                            key={`usr-${connection.id}-${usr.user_name}`}
-                                            className="table-item clickeable-item"
-                                            onContextMenu={(e) => {
-                                              e.stopPropagation();
-                                              showObjectContextMenu(e, connection.id, schema.schema_name, 'user', usr.user_name);
-                                            }}
-                                          >
-                                            <span className="table-icon table-icon-img"></span>
-                                            <span className="table-name">{usr.user_name}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      {(connectionUsers[connection.id] || []).length === 0 && !loadingUsers.has(connection.id) && (
-                                        <div className="no-schemas-message">No hay usuarios visibles</div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-
-                            {/* Mensaje cuando no hay esquemas */}
-                            {schemas.length === 0 && !isLoadingSchemas && (
-                              <div className="no-schemas-message">
-                                No hay esquemas disponibles
-                              </div>
-                            )}
+                        {/* Vistas */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionViews[connection.id]) {
+                                loadViews(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'views');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'view', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showViewsDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showViewsDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Vistas</span>
+                            <span className="schema-count">({views.length})</span>
+                            {isLoadingViews && <span className="loading-indicator loading-icon"></span>}
                           </div>
-                        )}
-                      </div>
+
+                          {showViewsDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element">
+                              <div className="tables-list">
+                                {views.map((view: any) => {
+                                  const viewName = view.view_name || view.name || view.VIEW_NAME || view.NAME || 'Sin nombre';
+                                  
+                                  return (
+                                    <div
+                                      key={`view-${connection.id}-${viewName}`}
+                                      className="table-item clickeable-item"
+                                      onClick={() => {
+                                        handleObjectSelect(connection.id, 'view', viewName);
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'view', viewName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{viewName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {views.length === 0 && !isLoadingViews && (
+                                <div className="no-schemas-message">No hay vistas disponibles</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Procedimientos */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionProcedures[connection.id]) {
+                                loadProcedures(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'procedures');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'procedure', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showProceduresDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showProceduresDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Procedimientos</span>
+                            <span className="schema-count">({procedures.length})</span>
+                            {isLoadingProcedures && <span className="loading-indicator loading-icon"></span>}
+                          </div>
+
+                          {showProceduresDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element">
+                              <div className="tables-list">
+                                {procedures.map((proc: any) => {
+                                  const procName = proc.procedure_name || proc.name || proc.PROCEDURE_NAME || proc.NAME || 'Sin nombre';
+                                  
+                                  return (
+                                    <div
+                                      key={`proc-${connection.id}-${procName}`}
+                                      className="table-item clickeable-item"
+                                      onClick={() => {
+                                        handleObjectSelect(connection.id, 'procedure', procName);
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'procedure', procName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{procName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {procedures.length === 0 && !isLoadingProcedures && (
+                                <div className="no-schemas-message">No hay procedimientos disponibles</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Funciones */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionFunctions[connection.id]) {
+                                loadFunctions(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'functions');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'function', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showFunctionsDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showFunctionsDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Funciones</span>
+                            <span className="schema-count">({functions.length})</span>
+                            {isLoadingFunctions && <span className="loading-indicator loading-icon"></span>}
+                          </div>
+
+                          {showFunctionsDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element">
+                              <div className="tables-list">
+                                {functions.map((fn: any) => {
+                                  const funcName = fn.function_name || fn.name || fn.FUNCTION_NAME || fn.NAME || 'Sin nombre';
+                                  
+                                  return (
+                                    <div
+                                      key={`fn-${connection.id}-${funcName}`}
+                                      className="table-item clickeable-item"
+                                      onClick={() => {
+                                        handleObjectSelect(connection.id, 'function', funcName);
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'function', funcName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{funcName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {functions.length === 0 && !isLoadingFunctions && (
+                                <div className="no-schemas-message">No hay funciones disponibles</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Triggers */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionTriggers[connection.id]) {
+                                loadTriggers(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'triggers');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'trigger', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showTriggersDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showTriggersDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Triggers</span>
+                            <span className="schema-count">({triggers.length})</span>
+                            {isLoadingTriggers && <span className="loading-indicator loading-icon"></span>}
+                          </div>
+
+                          {showTriggersDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element">
+                              <div className="tables-list">
+                                {triggers.map((tr: any) => {
+                                  const triggerName = tr.trigger_name || tr.name || tr.TRIGGER_NAME || tr.NAME || 'Sin nombre';
+                                  const relationName = tr.relation_name || tr.table_name || tr.RELATION_NAME || tr.TABLE_NAME || '';
+                                  
+                                  return (
+                                    <div
+                                      key={`tr-${connection.id}-${triggerName}`}
+                                      className="table-item clickeable-item"
+                                      onClick={() => {
+                                        handleObjectSelect(connection.id, 'trigger', triggerName);
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'trigger', triggerName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{triggerName}</span>
+                                      <span className="table-date">{relationName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {triggers.length === 0 && !isLoadingTriggers && (
+                                <div className="no-schemas-message">No hay triggers disponibles</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Índices */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionIndexes[connection.id]) {
+                                loadIndexes(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'indexes');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'index', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showIndexesDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showIndexesDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Índices</span>
+                            <span className="schema-count">({indexes.length})</span>
+                            {isLoadingIndexes && <span className="loading-indicator loading-icon"></span>}
+                          </div>
+
+                          {showIndexesDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element">
+                              <div className="tables-list">
+                                {indexes.map((ix: any) => {
+                                  const indexName = ix.index_name || ix.name || ix.INDEX_NAME || ix.NAME || 'Sin nombre';
+                                  const relationName = ix.relation_name || ix.table_name || ix.RELATION_NAME || ix.TABLE_NAME || '';
+                                  
+                                  return (
+                                    <div
+                                      key={`ix-${connection.id}-${indexName}`}
+                                      className="table-item clickeable-item"
+                                      onClick={() => {
+                                        handleObjectSelect(connection.id, 'index', indexName);
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'index', indexName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{indexName}</span>
+                                      <span className="table-date">{relationName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {indexes.length === 0 && !isLoadingIndexes && (
+                                <div className="no-schemas-message">No hay índices disponibles</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Paquetes */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionPackages[connection.id]) {
+                                loadPackages(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'packages');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'package', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showPackagesDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showPackagesDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Paquetes</span>
+                            <span className="schema-count">({packages.length})</span>
+                            {isLoadingPackages && <span className="loading-indicator loading-icon"></span>}
+                          </div>
+
+                          {showPackagesDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element">
+                              <div className="tables-list">
+                                {packages.map((pkg: any) => {
+                                  const packageName = pkg.package_name || pkg.name || pkg.PACKAGE_NAME || pkg.NAME || 'Sin nombre';
+                                  
+                                  return (
+                                    <div
+                                      key={`pkg-${connection.id}-${packageName}`}
+                                      className="table-item clickeable-item"
+                                      onClick={() => {
+                                        handleObjectSelect(connection.id, 'package', packageName);
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'package', packageName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{packageName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {packages.length === 0 && !isLoadingPackages && (
+                                <div className="no-schemas-message">No hay paquetes disponibles</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Secuencias */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionSequences[connection.id]) {
+                                loadSequences(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'sequences');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'sequence', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showSequencesDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showSequencesDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Secuencias</span>
+                            <span className="schema-count">({sequences.length})</span>
+                            {isLoadingSequences && <span className="loading-indicator loading-icon"></span>}
+                          </div>
+
+                          {showSequencesDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element">
+                              <div className="tables-list">
+                                {sequences.map((seq: any) => {
+                                  const sequenceName = seq.sequence_name || seq.name || seq.SEQUENCE_NAME || seq.NAME || seq.generator_name || seq.GENERATOR_NAME || 'Sin nombre';
+                                  
+                                  return (
+                                    <div
+                                      key={`seq-${connection.id}-${sequenceName}`}
+                                      className="table-item clickeable-item"
+                                      onClick={() => {
+                                        handleObjectSelect(connection.id, 'sequence', sequenceName);
+                                      }}
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'sequence', sequenceName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{sequenceName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {sequences.length === 0 && !isLoadingSequences && (
+                                <div className="no-schemas-message">No hay secuencias disponibles</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Usuarios */}
+                        <div className="object-section">
+                          <div
+                            className="section-header clickeable-header schema-category"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!connectionUsers[connection.id]) {
+                                loadUsers(connection.id);
+                              }
+                              toggleGenericDropdown(connection.id, 'users');
+                            }}
+                            onContextMenu={(e) => {
+                              e.stopPropagation();
+                              showObjectContextMenu(e, connection.id, 'user', '');
+                            }}
+                          >
+                            <span className={`expand-icon ${showUsersDropdown.has(connection.id) ? 'expanded' : ''}`}>
+                              {showUsersDropdown.has(connection.id) ? <span className="expand-down-icon"></span> : <span className="expand-right-icon"></span>}
+                            </span>
+                            <span className="section-title">Usuarios</span>
+                            <span className="schema-count">({users.length})</span>
+                            {isLoadingUsers && <span className="loading-indicator loading-icon"></span>}
+                          </div>
+
+                          {showUsersDropdown.has(connection.id) && (
+                            <div className="schemas-dropdown schema-element">
+                              <div className="tables-list">
+                                {users.map((usr: any) => {
+                                  const userName = usr.user_name || usr.name || usr.USER_NAME || usr.NAME || 'Sin nombre';
+                                  
+                                  return (
+                                    <div
+                                      key={`usr-${connection.id}-${userName}`}
+                                      className="table-item clickeable-item"
+                                      onContextMenu={(e) => {
+                                        e.stopPropagation();
+                                        showObjectContextMenu(e, connection.id, 'user', userName);
+                                      }}
+                                    >
+                                      <span className="table-icon table-icon-img"></span>
+                                      <span className="table-name">{userName}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {users.length === 0 && !isLoadingUsers && (
+                                <div className="no-schemas-message">No hay usuarios visibles</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-          {/* Mensaje cuando no hay conexiones */}
+
           {connections.length === 0 && !loading && (
                           <div className="tree-item empty">
                 <div className="tree-content">
@@ -1815,10 +1206,9 @@ const DatabaseSidebar = forwardRef(({
                 </div>
               </div>
           )}
-        </div>
       </div>
 
-      {/* Menú contextual */}
+      {/* Menú contextual para conexiones */}
       {contextMenu.isVisible && (
         <div
           className="context-menu"
@@ -1862,7 +1252,6 @@ const DatabaseSidebar = forwardRef(({
             <span>Refresh</span>
           </div>
 
-
           <div className="context-menu-item delete" onClick={() => {
             if (confirm(`¿Estás seguro de que quieres eliminar esta conexión?`)) {
               deleteConnection(contextMenu.connectionId);
@@ -1875,7 +1264,7 @@ const DatabaseSidebar = forwardRef(({
         </div>
       )}
 
-      {/* Menú contextual de objetos */}
+      {/* Menú contextual para objetos */}
       {objectContextMenu.isVisible && (
         <div
           className="context-menu object-context-menu"
@@ -1887,66 +1276,60 @@ const DatabaseSidebar = forwardRef(({
           }}
         >
 
-          {/* Debug: Mostrar información del objeto */}
-          <div style={{ padding: '8px', fontSize: '12px', color: '#666', borderBottom: '1px solid #eee' }}>
-            {objectContextMenu.objectName ? 
-              `Elemento: ${objectContextMenu.objectType} - ${objectContextMenu.objectName} | Esquema: ${objectContextMenu.schemaName}` :
-              `Encabezado: ${objectContextMenu.objectType} | Esquema: ${objectContextMenu.schemaName}`
-            }
-          </div>
 
-          {/* Opción para crear tabla (solo para encabezado de tablas) */}
-          {objectContextMenu.objectType === 'table' && !objectContextMenu.objectName && (
-            <div className="context-menu-item create-table" onClick={handleCreateTable}>
+           {objectContextMenu.objectType === 'table' && !objectContextMenu.objectName && (
+            <div className="context-menu-item create-table"  onClick={() => {
+              handleCreateTable(contextMenu.connectionId);
+              setContextMenu({ ...contextMenu, isVisible: false });
+            }}>
               <span className="tree-icon table-icon-img"></span>
               <span>Crear Tabla</span>
             </div>
           )}
 
-          {/* Opción para crear vista (solo para encabezado de vistas) */}
+
           {objectContextMenu.objectType === 'view' && !objectContextMenu.objectName && (
-            <div className="context-menu-item create-view" onClick={handleCreateView}>
+            <div className="context-menu-item create-view" onClick={() => {
+              handleCreateView(contextMenu.connectionId);
+              setContextMenu({ ...contextMenu, isVisible: false });
+            }}>
               <span className="tree-icon view-icon-img"></span>
               <span>Crear Vista</span>
             </div>
           )}
+          
+          <div className="context-menu-item view-ddl" onClick={() => {
+            handleViewDDL(objectContextMenu.connectionId, objectContextMenu.objectType, objectContextMenu.objectName);
+            setObjectContextMenu({ ...objectContextMenu, isVisible: false });
+          }}>
+            <span className="tree-icon ddl-icon-img"></span>
+            <span>Ver DDL</span>
+          </div>
 
-          {/* Opción para ver tabla (solo para tablas individuales) */}
-          {objectContextMenu.objectName && objectContextMenu.objectType === 'table' && (
-            <div className="context-menu-item view-table" onClick={handleViewTable}>
+          <div className="context-menu-item modify-ddl" onClick={() => {
+            handleModifyDDL(objectContextMenu.connectionId, objectContextMenu.objectType, objectContextMenu.objectName);
+            setObjectContextMenu({ ...objectContextMenu, isVisible: false });
+          }}>
+            <span className="tree-icon modify-icon-img"></span>
+            <span>Modificar DDL</span>
+            </div>
+
+          {objectContextMenu.objectType === 'table' && (
+            <div className="context-menu-item view-table" onClick={() => {
+              handleViewTable(objectContextMenu.connectionId, objectContextMenu.objectName);
+              setObjectContextMenu({ ...objectContextMenu, isVisible: false });
+            }}>
               <span className="tree-icon table-icon-img"></span>
               <span>Ver Tabla</span>
             </div>
           )}
-
-          {/* Opción para ver DDL (para elementos individuales) */}
-          {objectContextMenu.objectName && objectContextMenu.objectType !== 'schema' && (
-            <div className="context-menu-item view-ddl" onClick={handleViewDDL}>
-              <span className="tree-icon ddl-icon-img"></span>
-              <span>Ver DDL</span>
             </div>
           )}
 
-          {/* Opción para modificar DDL (para elementos individuales) */}
-          {objectContextMenu.objectName && objectContextMenu.objectType !== 'schema' && (
-            <div className="context-menu-item modify-ddl" onClick={handleModifyDDL}>
-              <span className="tree-icon modify-icon-img"></span>
-              <span>Modificar DDL</span>
-            </div>
-          )}
-
-
-        </div>
-      )}
-
-      {/* Cerrar menú contextual al hacer clic fuera */}
+      {/* Overlay para cerrar menús contextuales */}
       {(contextMenu.isVisible || objectContextMenu.isVisible) && (
         <div
-          className="context-menu-backdrop"
-          onClick={() => {
-            setContextMenu({ ...contextMenu, isVisible: false });
-            setObjectContextMenu(prev => ({ ...prev, isVisible: false }));
-          }}
+          className="context-menu-overlay"
           style={{
             position: 'fixed',
             top: 0,
@@ -1954,11 +1337,18 @@ const DatabaseSidebar = forwardRef(({
             right: 0,
             bottom: 0,
             zIndex: 999,
+            backgroundColor: 'transparent'
+          }}
+          onClick={() => {
+            setContextMenu({ ...contextMenu, isVisible: false });
+            setObjectContextMenu({ ...objectContextMenu, isVisible: false });
           }}
         />
       )}
-    </>
+    </div>
   );
 });
+
+DatabaseSidebar.displayName = 'DatabaseSidebar';
 
 export default DatabaseSidebar;

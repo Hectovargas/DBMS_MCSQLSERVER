@@ -22,24 +22,19 @@ export interface DatabaseConnection {
   dialect?: number;
 }
 
-export interface Schema {
-  schema_name: string;
-  table_name: string;
-}
 
 export interface Table {
   table_name: string;
-  schema_name: string;
   description?: string;
 }
 
-export interface View { view_name: string; schema_name: string; description?: string }
-export interface Package { package_name: string; schema_name: string; description?: string }
-export interface Procedure { procedure_name: string; schema_name: string; description?: string }
-export interface DbFunction { function_name: string; schema_name: string; description?: string }
+export interface View { view_name: string; description?: string }
+export interface Package { package_name: string;  description?: string }
+export interface Procedure { procedure_name: string;  description?: string }
+export interface DbFunction { function_name: string;  description?: string }
 export interface Sequence { sequence_name: string; description?: string }
-export interface Trigger { trigger_name: string; relation_name?: string; schema_name: string; description?: string }
-export interface Index { index_name: string; relation_name?: string; schema_name: string; is_unique?: number; is_inactive?: number }
+export interface Trigger { trigger_name: string; relation_name?: string; description?: string }
+export interface Index { index_name: string; relation_name?: string; is_inactive?: number }
 export interface DbUser { user_name: string; active?: number; plugin?: string; first_name?: string; last_name?: string }
 
 export interface Column {
@@ -84,7 +79,6 @@ class ApiService {
     
     try {
       const data = await response.json();
-      console.log('Respuesta del servidor:', data);
       return data;
     } catch (error) {
       console.error('Error al parsear respuesta JSON:', error);
@@ -95,7 +89,6 @@ class ApiService {
 
   async testConnection(config: ConnectionConfig): Promise<any> {
     try {
-      console.log('Probando conexión con config:', { ...config, password: '***' });
       
       const response = await fetch(`${API_BASE}/test`, {
         method: 'POST',
@@ -112,9 +105,7 @@ class ApiService {
 
 
   async addConnection(config: ConnectionConfig): Promise<any> {
-    try {
-      console.log('Agregando conexión con config:', { ...config, password: '***' });
-      
+    try {      
       const response = await fetch(`${API_BASE}/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,10 +119,8 @@ class ApiService {
     }
   }
 
-  // Obtener todas las conexiones
   async getAllConnections(): Promise<any> {
     try {
-      console.log('Obteniendo todas las conexiones');
       
       const response = await fetch(`${API_BASE}/all`);
       return await this.handleResponse(response);
@@ -141,10 +130,8 @@ class ApiService {
     }
   }
 
-  // Obtener conexiones activas
   async getActiveConnections(): Promise<any> {
     try {
-      console.log('Obteniendo conexiones activas');
       
       const response = await fetch(`${API_BASE}/active`);
       return await this.handleResponse(response);
@@ -154,10 +141,8 @@ class ApiService {
     }
   }
 
-  // Eliminar conexión
   async removeConnection(connectionId: string): Promise<any> {
     try {
-      console.log('Eliminando conexión:', connectionId);
       
       const response = await fetch(`${API_BASE}/${connectionId}`, {
         method: 'DELETE',
@@ -170,10 +155,8 @@ class ApiService {
     }
   }
 
-  // Conectar a base de datos
   async connectToDatabase(connectionId: string): Promise<any> {
     try {
-      console.log('Conectando a base de datos:', connectionId);
       
       const response = await fetch(`${API_BASE}/${connectionId}/connect`, {
         method: 'POST',
@@ -186,10 +169,8 @@ class ApiService {
     }
   }
 
-  // Desconectar de base de datos
   async disconnectFromDatabase(connectionId: string): Promise<any> {
     try {
-      console.log('Desconectando de base de datos:', connectionId);
       
       const response = await fetch(`${API_BASE}/${connectionId}/disconnect`, {
         method: 'POST',
@@ -202,10 +183,8 @@ class ApiService {
     }
   }
 
-  // Ejecutar consulta
   async executeQuery(connectionId: string, query: string, parameters?: any): Promise<QueryResult> {
     try {
-      console.log('Ejecutando query:', { connectionId, query, parameters });
       
       const response = await fetch(`${API_BASE}/${connectionId}/query`, {
         method: 'POST',
@@ -220,44 +199,21 @@ class ApiService {
     }
   }
 
-  // Obtener esquemas
-  async getSchemas(connectionId: string): Promise<any> {
-    try {
-      console.log('Obteniendo esquemas para:', connectionId);
-      
-      const response = await fetch(`${API_BASE}/${connectionId}/schemas`);
-      return await this.handleResponse(response);
-    } catch (error) {
-      console.error('Error en getSchemas:', error);
-      throw error;
-    }
-  }
 
-  // Obtener tablas
-  async getTables(connectionId: string, schemaName: string = ''): Promise<any> {
+  async getTables(connectionId: string): Promise<any> {
     try {
-      console.log('Obteniendo tablas:', { connectionId, schemaName });
       
-      let url = `${API_BASE}/${connectionId}/schemas`;
-      if (schemaName && schemaName !== 'DEFAULT') {
-        url += `/${schemaName}/tables`;
-      } else {
-        url += '/tables';
-      }
-      
+      let url = `${API_BASE}/${connectionId}/tables`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
-      console.error('Error en getTables:', error);
       throw error;
     }
   }
 
-  // Obtener vistas
-  async getViews(connectionId: string, schemaName: string = ''): Promise<any> {
+  async getViews(connectionId: string): Promise<any> {
     try {
-      let url = `${API_BASE}/${connectionId}/schemas`;
-      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/views` : `/views`;
+      let url = `${API_BASE}/${connectionId}/views`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
@@ -266,11 +222,9 @@ class ApiService {
     }
   }
 
-  // Obtener paquetes
-  async getPackages(connectionId: string, schemaName: string = ''): Promise<any> {
+  async getPackages(connectionId: string): Promise<any> {
     try {
-      let url = `${API_BASE}/${connectionId}/schemas`;
-      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/packages` : `/packages`;
+      let url = `${API_BASE}/${connectionId}/packages`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
@@ -279,11 +233,9 @@ class ApiService {
     }
   }
 
-  // Obtener procedimientos
-  async getProcedures(connectionId: string, schemaName: string = ''): Promise<any> {
+  async getProcedures(connectionId: string): Promise<any> {
     try {
-      let url = `${API_BASE}/${connectionId}/schemas`;
-      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/procedures` : `/procedures`;
+      let url = `${API_BASE}/${connectionId}/procedures`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
@@ -292,11 +244,9 @@ class ApiService {
     }
   }
 
-  // Obtener funciones
-  async getFunctions(connectionId: string, schemaName: string = ''): Promise<any> {
+  async getFunctions(connectionId: string): Promise<any> {
     try {
-      let url = `${API_BASE}/${connectionId}/schemas`;
-      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/functions` : `/functions`;
+      let url = `${API_BASE}/${connectionId}/functions`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
@@ -305,7 +255,6 @@ class ApiService {
     }
   }
 
-  // Obtener secuencias
   async getSequences(connectionId: string): Promise<any> {
     try {
       const response = await fetch(`${API_BASE}/${connectionId}/sequences`);
@@ -316,11 +265,10 @@ class ApiService {
     }
   }
 
-  // Obtener triggers
-  async getTriggers(connectionId: string, schemaName: string = ''): Promise<any> {
+
+  async getTriggers(connectionId: string): Promise<any> {
     try {
-      let url = `${API_BASE}/${connectionId}/schemas`;
-      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/triggers` : `/triggers`;
+      let url = `${API_BASE}/${connectionId}/triggers`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
@@ -329,11 +277,9 @@ class ApiService {
     }
   }
 
-  // Obtener índices
-  async getIndexes(connectionId: string, schemaName: string = ''): Promise<any> {
+  async getIndexes(connectionId: string): Promise<any> {
     try {
-      let url = `${API_BASE}/${connectionId}/schemas`;
-      url += schemaName && schemaName !== 'DEFAULT' ? `/${schemaName}/indexes` : `/indexes`;
+      let url = `${API_BASE}/${connectionId}/indexes`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
@@ -342,7 +288,6 @@ class ApiService {
     }
   }
 
-  // Obtener usuarios
   async getUsers(connectionId: string): Promise<any> {
     try {
       const response = await fetch(`${API_BASE}/${connectionId}/users`);
@@ -353,7 +298,6 @@ class ApiService {
     }
   }
 
-  // Obtener tablespaces (no aplica, pero endpoint informativo)
   async getTablespaces(connectionId: string): Promise<any> {
     try {
       const response = await fetch(`${API_BASE}/${connectionId}/tablespaces`);
@@ -364,19 +308,14 @@ class ApiService {
     }
   }
 
-  // Obtener columnas de tabla
-  async getTableColumns(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+  async getTableColumns(connectionId: string, tableName: string): Promise<any> {
     try {
-      console.log('Obteniendo columnas de tabla:', { connectionId, tableName, schemaName });
       
-      // Si el esquema es DEFAULT, no lo incluimos en la URL
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/tables/${tableName}/columns?schemaName=${encodeURIComponent(schemaParam)}`;
-      console.log('API URL:', url);
+      const url = `${API_BASE}/${connectionId}/tables/${tableName}/columns?`;
+     
       
       const response = await fetch(url);
       const result = await this.handleResponse(response);
-      console.log('API result:', result);
       return result;
     } catch (error) {
       console.error('Error en getTableColumns:', error);
@@ -384,10 +323,8 @@ class ApiService {
     }
   }
 
-  // Verificar salud de conexiones
   async checkConnectionsHealth(): Promise<any> {
     try {
-      console.log('Verificando salud de conexiones');
       
       const response = await fetch(`${API_BASE}/health-check`, {
         method: 'POST',
@@ -400,10 +337,9 @@ class ApiService {
     }
   }
 
-  // Cerrar todas las conexiones
   async closeAllConnections(): Promise<any> {
     try {
-      console.log('Cerrando todas las conexiones');
+
       
       const response = await fetch(`${API_BASE}/close-all`, {
         method: 'POST',
@@ -416,10 +352,9 @@ class ApiService {
     }
   }
 
-  // Verificar salud del servidor
+
   async checkServerHealth(): Promise<any> {
     try {
-      console.log('Verificando salud del servidor');
       
       const response = await fetch('http://localhost:3001/api/health');
       return await this.handleResponse(response);
@@ -429,17 +364,11 @@ class ApiService {
     }
   }
 
-  //--------------------------------------------------------------------------------------------------------------------------------------
-  // MÉTODOS PARA GENERAR DDL DE OBJETOS
-  //--------------------------------------------------------------------------------------------------------------------------------------
 
-  // Generar DDL de tabla
-  async generateTableDDL(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+  async generateTableDDL(connectionId: string, tableName: string): Promise<any> {
     try {
-      console.log('Generando DDL de tabla:', { connectionId, tableName, schemaName });
       
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/tables/${tableName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      const url = `${API_BASE}/${connectionId}/tables/${tableName}/ddl?`;
       
       const response = await fetch(url);
       return await this.handleResponse(response);
@@ -449,13 +378,10 @@ class ApiService {
     }
   }
 
-  // Generar DDL de función
-  async generateFunctionDDL(connectionId: string, functionName: string, schemaName: string = ''): Promise<any> {
+  async generateFunctionDDL(connectionId: string, functionName: string): Promise<any> {
     try {
-      console.log('Generando DDL de función:', { connectionId, functionName, schemaName });
       
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/functions/${functionName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      const url = `${API_BASE}/${connectionId}/functions/${functionName}/ddl?`;
       
       const response = await fetch(url);
       return await this.handleResponse(response);
@@ -465,13 +391,10 @@ class ApiService {
     }
   }
 
-  // Generar DDL de trigger
-  async generateTriggerDDL(connectionId: string, triggerName: string, schemaName: string = ''): Promise<any> {
+  async generateTriggerDDL(connectionId: string, triggerName: string): Promise<any> {
     try {
-      console.log('Generando DDL de trigger:', { connectionId, triggerName, schemaName });
-      
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/triggers/${triggerName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+
+      const url = `${API_BASE}/${connectionId}/triggers/${triggerName}/ddl?`;
       
       const response = await fetch(url);
       return await this.handleResponse(response);
@@ -481,13 +404,11 @@ class ApiService {
     }
   }
 
-  // Generar DDL de procedimiento
-  async generateProcedureDDL(connectionId: string, procedureName: string, schemaName: string = ''): Promise<any> {
+  async generateProcedureDDL(connectionId: string, procedureName: string): Promise<any> {
     try {
-      console.log('Generando DDL de procedimiento:', { connectionId, procedureName, schemaName });
-      
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/procedures/${procedureName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+
+
+      const url = `${API_BASE}/${connectionId}/procedures/${procedureName}/ddl?`;
       
       const response = await fetch(url);
       return await this.handleResponse(response);
@@ -497,13 +418,11 @@ class ApiService {
     }
   }
 
-  // Generar DDL de vista
-  async generateViewDDL(connectionId: string, viewName: string, schemaName: string = ''): Promise<any> {
+  async generateViewDDL(connectionId: string, viewName: string): Promise<any> {
     try {
-      console.log('Generando DDL de vista:', { connectionId, viewName, schemaName });
       
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/views/${viewName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+
+      const url = `${API_BASE}/${connectionId}/views/${viewName}/ddl?`;
       
       const response = await fetch(url);
       return await this.handleResponse(response);
@@ -513,13 +432,11 @@ class ApiService {
     }
   }
 
-  // Generar DDL de índice
-  async generateIndexDDL(connectionId: string, indexName: string, schemaName: string = ''): Promise<any> {
+  async generateIndexDDL(connectionId: string, indexName: string): Promise<any> {
     try {
-      console.log('Generando DDL de índice:', { connectionId, indexName, schemaName });
       
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/indexes/${indexName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+
+      const url = `${API_BASE}/${connectionId}/indexes/${indexName}/ddl?`;
       
       const response = await fetch(url);
       return await this.handleResponse(response);
@@ -529,11 +446,9 @@ class ApiService {
     }
   }
 
-  async generateSequenceDDL(connectionId: string, sequenceName: string, schemaName: string = ''): Promise<any> {
+  async generateSequenceDDL(connectionId: string, sequenceName: string): Promise<any> {
     try {
-      console.log('Generando DDL de secuencia:', { connectionId, sequenceName, schemaName });
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/sequences/${sequenceName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      const url = `${API_BASE}/${connectionId}/sequences/${sequenceName}/ddl`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
@@ -542,10 +457,8 @@ class ApiService {
     }
   }
 
-  // Generar DDL de usuario
-  async generateUserDDL(connectionId: string, userName: string, schemaName: string = ''): Promise<any> {
+  async generateUserDDL(connectionId: string, userName: string): Promise<any> {
     try {
-      console.log('Generando DDL de usuario:', { connectionId, userName, schemaName });
       
       const url = `${API_BASE}/${connectionId}/users/${userName}/ddl`;
       
@@ -557,13 +470,17 @@ class ApiService {
     }
   }
 
-  // Generar DDL de paquete
-  async generatePackageDDL(connectionId: string, packageName: string, schemaName: string = ''): Promise<any> {
+  async generatePackageDDL(connectionId: string, packageName: string): Promise<any> {
     try {
-      console.log('Generando DDL de paquete:', { connectionId, packageName, schemaName });
+      console.log(`🔍 [FRONTEND] Generando DDL para paquete: ${packageName} en conexión: ${connectionId}`);
       
-      const schemaParam = schemaName && schemaName !== 'DEFAULT' ? schemaName : '';
-      const url = `${API_BASE}/${connectionId}/packages/${packageName}/ddl?schemaName=${encodeURIComponent(schemaParam)}`;
+      // Codificar el nombre del paquete para la URL
+      const encodedPackageName = encodeURIComponent(packageName);
+      const url = `${API_BASE}/${connectionId}/packages/${encodedPackageName}/ddl`;
+      
+      console.log(`📡 [FRONTEND] URL de la petición: ${url}`);
+      console.log(`📡 [FRONTEND] Nombre original: "${packageName}"`);
+      console.log(`📡 [FRONTEND] Nombre codificado: "${encodedPackageName}"`);
       
       const response = await fetch(url);
       return await this.handleResponse(response);
@@ -573,13 +490,8 @@ class ApiService {
     }
   }
 
-  //--------------------------------------------------------------------------------------------------------------------------------------
-  // MÉTODOS PARA CREAR OBJETOS
-  //--------------------------------------------------------------------------------------------------------------------------------------
 
-  // Crear tabla
   async createTable(connectionId: string, tableData: {
-    schemaName?: string;
     tableName: string;
     columns: Array<{
       name: string;
@@ -592,8 +504,7 @@ class ApiService {
     }>;
   }): Promise<any> {
     try {
-      console.log('Creando tabla:', { connectionId, tableData });
-      
+
       const response = await fetch(`${API_BASE}/${connectionId}/tables`, {
         method: 'POST',
         headers: {
@@ -609,15 +520,13 @@ class ApiService {
     }
   }
 
-  // Crear vista
+
   async createView(connectionId: string, viewData: {
-    schemaName?: string;
     viewName: string;
     selectStatement: string;
     withCheckOption?: boolean;
   }): Promise<any> {
     try {
-      console.log('Creando vista:', { connectionId, viewData });
       
       const response = await fetch(`${API_BASE}/${connectionId}/views`, {
         method: 'POST',

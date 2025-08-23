@@ -3,42 +3,34 @@ const DatabaseController = require('../controllers/databaseController');
 
 const router = express.Router();
 
-
+// Rutas de conexión
 router.post('/test', DatabaseController.testConnection);
 router.post('/add', DatabaseController.addConnection);
 router.get('/all', DatabaseController.getAllConnections);
 router.get('/active', DatabaseController.getActiveConnections);
 router.delete('/:connectionId', DatabaseController.removeConnection);
 
-
+// Rutas de conexión a base de datos
 router.post('/:connectionId/connect', DatabaseController.connectToDatabase);
 router.post('/:connectionId/disconnect', DatabaseController.disconnectFromDatabase);
 
-
+// Rutas de consultas
 router.post('/:connectionId/query', DatabaseController.executeQuery);
-router.get('/:connectionId/schemas', DatabaseController.getSchemas);
-router.get('/:connectionId/schemas/tables', DatabaseController.getTables);
-router.get('/:connectionId/schemas/:schemaName/tables', DatabaseController.getTables);
+
+// Rutas de objetos de base de datos
+router.get('/:connectionId/tables', DatabaseController.getTables);
 router.get('/:connectionId/tables/:tableName/columns', DatabaseController.getTableColumns);
-
-
-router.get('/:connectionId/schemas/views', DatabaseController.getViews);
-router.get('/:connectionId/schemas/:schemaName/views', DatabaseController.getViews);
-router.get('/:connectionId/schemas/packages', DatabaseController.getPackages);
-router.get('/:connectionId/schemas/:schemaName/packages', DatabaseController.getPackages);
-router.get('/:connectionId/schemas/procedures', DatabaseController.getProcedures);
-router.get('/:connectionId/schemas/:schemaName/procedures', DatabaseController.getProcedures);
-router.get('/:connectionId/schemas/functions', DatabaseController.getFunctions);
-router.get('/:connectionId/schemas/:schemaName/functions', DatabaseController.getFunctions);
+router.get('/:connectionId/views', DatabaseController.getViews);
+router.get('/:connectionId/packages', DatabaseController.getPackages);
+router.get('/:connectionId/procedures', DatabaseController.getProcedures);
+router.get('/:connectionId/functions', DatabaseController.getFunctions);
 router.get('/:connectionId/sequences', DatabaseController.getSequences);
-router.get('/:connectionId/schemas/indexes', DatabaseController.getIndexes);
-router.get('/:connectionId/schemas/:schemaName/indexes', DatabaseController.getIndexes);
-router.get('/:connectionId/schemas/triggers', DatabaseController.getTriggers);
-router.get('/:connectionId/schemas/:schemaName/triggers', DatabaseController.getTriggers);
+router.get('/:connectionId/indexes', DatabaseController.getIndexes);
+router.get('/:connectionId/triggers', DatabaseController.getTriggers);
 router.get('/:connectionId/users', DatabaseController.getUsers);
 router.get('/:connectionId/tablespaces', DatabaseController.getTablespaces);
 
-
+// Rutas de DDL
 router.get('/:connectionId/tables/:tableName/ddl', DatabaseController.generateTableDDL);
 router.get('/:connectionId/functions/:functionName/ddl', DatabaseController.generateFunctionDDL);
 router.get('/:connectionId/triggers/:triggerName/ddl', DatabaseController.generateTriggerDDL);
@@ -49,19 +41,11 @@ router.get('/:connectionId/packages/:packageName/ddl', DatabaseController.genera
 router.get('/:connectionId/sequences/:sequenceName/ddl', DatabaseController.generateSequenceDDL);
 router.get('/:connectionId/users/:userName/ddl', DatabaseController.generateUserDDL);
 
-
+// Rutas de creación
 router.post('/:connectionId/tables', DatabaseController.createTable);
-
-// Endpoint temporal para debug
-router.get('/debug/connections', (req: any, res: any) => {
-  const databaseManager = require('../services/databaseManager');
-  res.json({
-    connections: Object.keys(databaseManager.conexiones || {}),
-    connectionDetails: databaseManager.conexiones || {}
-  });
-});
 router.post('/:connectionId/views', DatabaseController.createView);
 
+// Rutas de mantenimiento
 router.post('/health-check', DatabaseController.checkConnectionsHealth);
 router.post('/close-all', DatabaseController.closeAllConnections);
 

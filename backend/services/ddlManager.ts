@@ -1,3 +1,6 @@
+import Console = require("node:console");
+import console = require("node:console");
+
 const OperationsManager = require('./operationsManager');
 
 
@@ -5,57 +8,143 @@ const OperationsManager = require('./operationsManager');
 class DDLManager extends OperationsManager {
     
 
-    async generateTableDDL(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+    async generateTableDDL(connectionId: string, tableName: string): Promise<any> {
         try {
+
             if (!this.connections[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
+                return {success: false, message: 'Conexion no encontrada'};
             }
-
-            const columnsResult = await this.getTablesColumns(connectionId, tableName, schemaName);
-            if (!columnsResult.success) {
-                return columnsResult;
-            }
-
-            const indexesResult = await this.getTableIndexes(connectionId, tableName, schemaName);
-            const indexes = indexesResult.success ? indexesResult.data : [];
-
-            const constraintsResult = await this.getTableConstraints(connectionId, tableName, schemaName);
-            const constraints = constraintsResult.success ? constraintsResult.data : [];
-
-            const ddl = await this.buildTableDDL(connectionId, tableName, schemaName, columnsResult.data, indexes, constraints);
-
-            return {
-                success: true,
-                data: ddl,
-                message: 'DDL de tabla generado exitosamente'
-            };
-
+    
+            const columnsResult = await this.getTablesColumns(connectionId, tableName);
+            if (!columnsResult.success) return columnsResult;
+    
+            const indexesResult = await this.getTableIndexes(connectionId, tableName);
+            const constraintsResult = await this.getTableConstraints(connectionId, tableName);
+    
+            const ddl = await this.buildTableDDL(
+                connectionId, 
+                tableName,
+                columnsResult.data, 
+                indexesResult.success ? indexesResult.data : [],
+                constraintsResult.success ? constraintsResult.data : []
+            );
+    
+            return {success: true, data: ddl, message: 'DDL generado exitosamente'};
+    
         } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al generar DDL de tabla',
-                error: { message: error.message }
-            };
+            return {success: false, message: 'Error al generar DDL', error: {message: error.message}};
         }
     }
+    
+    private async buildTableDDL(connectionId: string, tableName: string, columns: any[], indexes: any[], constraints: any[]): Promise<string> {
+        
+        // comentarios que siempre aparecen
+        let ddl = `-- ${tableName} definition\n\n-- DROP TABLE ${tableName};\n\n`;
+        
+        // el crate table
+        ddl += `CREATE TABLE ${tableName} (\n`;
+        
+        // mapear las columnas de la tabla 
+        const columnDefs = columns.map(col => {
 
+            let def = `\t${col.name} ${this.getFirebirdDataType(col)}`;
+            
+            if (!col.isNullable && !col.defaultValue) {
+                def += ' NOT NULL';
+            }
+            
+            if (col.defaultValue) {
+                def += ` DEFAULT ${this.formatDefault(col)}`;
+            }
+            
+            return def;
+        });
+        
+        ddl += columnDefs.join(',\n');
+        
+       
+        const pk = constraints.find(c => c.CONSTRAINT_TYPE === 'PRIMARY KEY');
+        if (pk) {
+            const pkName = pk.CONSTRAINT_NAME || `PK_${tableName}`;
+            const pkFields = this.getConstraintFields(columns, pk);
+            ddl += `,\n\tCONSTRAINT "${pkName}" PRIMARY KEY (${pkFields.map(f => `"${f}"`).join(', ')})`;
+        }
+        
+        
+        const uniques = constraints.filter(c => c.CONSTRAINT_TYPE === 'UNIQUE');
+        for (const uk of uniques) {
+            const ukName = uk.CONSTRAINT_NAME || `UK_${tableName}_${Date.now()}`;
+            const ukFields = this.getConstraintFields(columns, uk);
+            ddl += `,\n\tCONSTRAINT "${ukName}" UNIQUE (${ukFields.map(f => `"${f}"`).join(', ')})`;
+        }
+        
+        ddl += '\n);\n\n';
+        
+       
+        for (const index of indexes) {
+            if (index.INDEX_NAME && !index.INDEX_NAME.startsWith('RDB$')) {
+                const unique = index.IS_UNIQUE ? 'UNIQUE ' : '';
+                const indexFields = await this.getIndexFields(connectionId, index.INDEX_NAME);
+                
+                if (indexFields && indexFields.length > 0) {
+                    const fieldList = indexFields.map(f => `"${f.FIELD_NAME}"`).join(', ');
+                    ddl += `CREATE ${unique}INDEX ${index.INDEX_NAME} ON ${tableName} (${fieldList});\n`;
+                }
+            }
+        }
+        
+       
+        const fks = constraints.filter(c => c.CONSTRAINT_TYPE === 'FOREIGN KEY');
+        console.log('FKs encontradas:', fks); 
+        
+        if (fks.length > 0) {
+            ddl += `\n-- Foreign Keys\n`;
+            for (const fk of fks) {
+                const fkName = fk.CONSTRAINT_NAME || `FK_${tableName}_${Date.now()}`;
+                const fkFields = this.getConstraintFields(columns, fk);
+                const refTable = fk.REFERENCED_TABLE_NAME || 'REFERENCED_TABLE';
+                const refFields = fk.REFERENCED_COLUMN_NAMES || fkFields; 
+                
+                ddl += `ALTER TABLE ${tableName} ADD CONSTRAINT "${fkName}" `;
+                ddl += `FOREIGN KEY (${fkFields.map(f => `"${f}"`).join(', ')}) `;
+                ddl += `REFERENCES ${refTable}(${refFields.split(',').map((f:any) => `"${f.trim()}"`).join(', ')});\n`;
+            }
+        }
+        
+        return ddl;
+    }
+    
+    private formatDefault(col: any): string {
+        let value = String(col.defaultValue).replace(/^['"]+|['"]+$/g, '');
+        
+       
+        if (value === 'TRUE' || value === 'true') return '1';
+        if (value === 'FALSE' || value === 'false') return '0';
+        if (value === 'CURRENT_TIMESTAMP') return 'NULL';
+        if (value === 'NULL' || value === 'null') return 'NULL';
+        
+        const dataType = this.getFirebirdDataType(col);
+        
+        
+        if ((dataType.includes('VARCHAR') || dataType.includes('CHAR') || dataType === 'BLOB') && value !== 'NULL') {
+            return `'${value}'`;
+        }
+        
+        return value;
+    }
 
-    async generateViewDDL(connectionId: string, viewName: string, schemaName: string = ''): Promise<any> {
+    async generateViewDDL(connectionId: string, viewName: string): Promise<any> {
         try {
             if (!this.connections[connectionId]) {
                 return {
                     success: false,
-                    message: 'Conexión no encontrada'
+                    message: 'Conexion no encontrada'
                 };
             }
 
             const query = `
                 SELECT 
                     TRIM(R.RDB$RELATION_NAME) AS VIEW_NAME,
-                    TRIM(R.RDB$OWNER_NAME) AS OWNER_NAME,
                     CAST(R.RDB$VIEW_SOURCE AS VARCHAR(8000)) AS VIEW_SOURCE,
                     R.RDB$DESCRIPTION AS DESCRIPTION,
                     R.RDB$SYSTEM_FLAG AS SYSTEM_FLAG
@@ -93,19 +182,18 @@ class DDLManager extends OperationsManager {
     }
 
 
-    async generateFunctionDDL(connectionId: string, functionName: string, schemaName: string = ''): Promise<any> {
+    async generateFunctionDDL(connectionId: string, functionName: string): Promise<any> {
         try {
             if (!this.connections[connectionId]) {
                 return {
                     success: false,
-                    message: 'Conexión no encontrada'
+                    message: 'Conexion no encontrada'
                 };
             }
 
             const query = `
                 SELECT 
                     TRIM(R.RDB$FUNCTION_NAME) AS FUNCTION_NAME,
-                    TRIM(R.RDB$OWNER_NAME) AS OWNER_NAME,
                     R.RDB$FUNCTION_TYPE AS FUNCTION_TYPE,
                     R.RDB$QUERY_NAME AS QUERY_NAME,
                     R.RDB$DESCRIPTION AS DESCRIPTION,
@@ -147,19 +235,18 @@ class DDLManager extends OperationsManager {
     }
 
 
-    async generateProcedureDDL(connectionId: string, procedureName: string, schemaName: string = ''): Promise<any> {
+    async generateProcedureDDL(connectionId: string, procedureName: string): Promise<any> {
         try {
             if (!this.connections[connectionId]) {
                 return {
                     success: false,
-                    message: 'Conexión no encontrada'
+                    message: 'Conexion no encontrada'
                 };
             }
 
             const query = `
                 SELECT 
                     TRIM(P.RDB$PROCEDURE_NAME) AS PROCEDURE_NAME,
-                    TRIM(P.RDB$OWNER_NAME) AS OWNER_NAME,
                     CAST(P.RDB$PROCEDURE_SOURCE AS VARCHAR(8000)) AS PROCEDURE_SOURCE,
                     P.RDB$PROCEDURE_BLR AS PROCEDURE_BLR,
                     P.RDB$DESCRIPTION AS DESCRIPTION,
@@ -201,12 +288,12 @@ class DDLManager extends OperationsManager {
     }
 
 
-    async generateTriggerDDL(connectionId: string, triggerName: string, schemaName: string = ''): Promise<any> {
+    async generateTriggerDDL(connectionId: string, triggerName: string): Promise<any> {
         try {
             if (!this.connections[connectionId]) {
                 return {
                     success: false,
-                    message: 'Conexión no encontrada'
+                    message: 'Conexion no encontrada'
                 };
             }
 
@@ -256,7 +343,7 @@ class DDLManager extends OperationsManager {
     }
 
 
-    async generateIndexDDL(connectionId: string, indexName: string, schemaName: string = ''): Promise<any> {
+    async generateIndexDDL(connectionId: string, indexName: string): Promise<any> {
         try {
             if (!this.connections[connectionId]) {
                 return {
@@ -269,7 +356,6 @@ class DDLManager extends OperationsManager {
                 SELECT 
                     TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
                     TRIM(I.RDB$RELATION_NAME) AS RELATION_NAME,
-                    TRIM(COALESCE(R.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
                     I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
                     I.RDB$INDEX_TYPE AS INDEX_TYPE,
                     I.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
@@ -278,16 +364,14 @@ class DDLManager extends OperationsManager {
                 FROM RDB$INDICES I
                 LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
                 WHERE I.RDB$INDEX_NAME = UPPER(?)
-                ${schemaName ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
             `;
 
-            const params = schemaName ? [indexName, schemaName] : [indexName];
-            const result = await this.executeQuery(connectionId, query, params);
+            const result = await this.executeQuery(connectionId, query, indexName);
 
             if (!result.success || !result.data || result.data.length === 0) {
                 return {
                     success: false,
-                    message: 'Índice no encontrado'
+                    message: 'indice no encontrado'
                 };
             }
 
@@ -323,158 +407,11 @@ class DDLManager extends OperationsManager {
     }
 
 
-    private async buildTableDDL(connectionId: string, tableName: string, schemaName: string, columns: any[], indexes: any[], constraints: any[]): Promise<string> {
-        const schemaPrefix = schemaName && schemaName !== 'SYSDBA' ? `"${schemaName}".` : '';
-        
-        // Encabezado con comentarios
-        let ddl = `-- ${tableName} definition\n\n`;
-        ddl += `-- Drop table\n\n`;
-        ddl += `-- DROP TABLE ${schemaPrefix}"${tableName}";\n\n`;
-        
-        // CREATE TABLE
-        ddl += `CREATE TABLE ${schemaPrefix}"${tableName}" (\n`;
 
-        const columnDefinitions = columns.map(col => {
-            let definition = `\t"${col.name}" ${this.getFirebirdDataType(col)}`;
 
-            if (!col.isNullable && !col.defaultValue) {
-                definition += ' NOT NULL';
-            }
 
-            if (col.defaultValue) {
-                let defaultValue = col.defaultValue;
-                const dataType = this.getFirebirdDataType(col);
-                
-                if (typeof defaultValue === 'string') {
-                    defaultValue = defaultValue.replace(/^['"]+|['"]+$/g, '');
-                }
-                
-                if (defaultValue === 'TRUE' || defaultValue === 'true') {
-                    defaultValue = '1';
-                } else if (defaultValue === 'FALSE' || defaultValue === 'false') {
-                    defaultValue = '0';
-                }
-                
-                if (defaultValue === 'CURRENT_TIMESTAMP') {
-                    defaultValue = 'NULL';
-                }
-                
-                if (defaultValue === 'NULL' || defaultValue === 'null') {
-                    defaultValue = 'NULL';
-                }
-                
-                if (dataType.startsWith('VARCHAR') || dataType.startsWith('CHAR')) {
-                    if (defaultValue !== 'NULL') {
-                        defaultValue = `'${defaultValue}'`;
-                    }
-                }
-                
-                if (dataType === 'BLOB' && typeof defaultValue === 'string' && defaultValue !== 'NULL') {
-                    defaultValue = `'${defaultValue}'`;
-                }
-                
-                if (dataType.includes('INT') || dataType.includes('SMALLINT') || dataType.includes('BIGINT') || 
-                    dataType.includes('FLOAT') || dataType.includes('DOUBLE')) {
-                    if (typeof defaultValue === 'string' && defaultValue.startsWith("'")) {
-                        defaultValue = defaultValue.replace(/^['"]+|['"]+$/g, '');
-                    }
-                }
-                
-                if (dataType === 'TIMESTAMP') {
-                    defaultValue = 'NULL';
-                }
-                
-                definition += ` DEFAULT ${defaultValue}`;
-            }
-
-            return definition;
-        });
-
-        ddl += columnDefinitions.join(',\n');
-
-        // Agregar restricciones de tabla
-        const primaryKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'PRIMARY KEY');
-        const uniqueKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'UNIQUE');
-        const foreignKeys = constraints.filter(c => c.CONSTRAINT_TYPE === 'FOREIGN KEY');
-
-        if (primaryKeys.length > 0) {
-            ddl += ',\n\tCONSTRAINT ';
-            const pkFields = this.getConstraintFields(columns, primaryKeys[0]);
-            if (primaryKeys[0].CONSTRAINT_NAME) {
-                ddl += `"${primaryKeys[0].CONSTRAINT_NAME}" `;
-            } else {
-                ddl += `INTEG_${Math.floor(Math.random() * 1000)} `;
-            }
-            ddl += 'PRIMARY KEY (';
-            ddl += pkFields.map((f: any) => `"${f}"`).join(', ');
-            ddl += ')';
-        }
-
-        if (uniqueKeys.length > 0) {
-            for (const uk of uniqueKeys) {
-                ddl += ',\n\tCONSTRAINT ';
-                if (uk.CONSTRAINT_NAME) {
-                    ddl += `"${uk.CONSTRAINT_NAME}" `;
-                } else {
-                    ddl += `INTEG_${Math.floor(Math.random() * 1000)} `;
-                }
-                ddl += 'UNIQUE (';
-                const ukFields = this.getConstraintFields(columns, uk);
-                ddl += ukFields.map((f: any) => `"${f}"`).join(', ');
-                ddl += ')';
-            }
-        }
-
-        ddl += '\n);\n';
-
-        // Agregar índices
-        for (const index of indexes) {
-            if (index.INDEX_NAME && !index.INDEX_NAME.startsWith('RDB$')) {
-                const indexSchemaPrefix = schemaName && schemaName !== 'SYSDBA' ? `"${schemaName}".` : '';
-                ddl += `CREATE ${index.IS_UNIQUE ? 'UNIQUE ' : ''}INDEX "${index.INDEX_NAME}" ON ${indexSchemaPrefix}"${tableName}" (`;
-                
-                // Obtener los campos del índice
-                const indexFields = await this.getIndexFields(connectionId, index.INDEX_NAME);
-                if (indexFields && indexFields.length > 0) {
-                    ddl += indexFields.map((field: any) => `"${field.FIELD_NAME}"`).join(', ');
-                } else {
-                    ddl += '/* campos del índice - especificar manualmente */';
-                }
-                
-                ddl += ');\n';
-            }
-        }
-
-        // Agregar restricciones de clave foránea
-        if (foreignKeys.length > 0) {
-            ddl += `\n-- ${tableName} foreign keys\n\n`;
-            
-            for (const fk of foreignKeys) {
-                const fkFields = this.getConstraintFields(columns, fk);
-                const referencedTable = fk.REFERENCED_TABLE_NAME || '/* tabla referenciada */';
-                const referencedFields = fk.REFERENCED_COLUMN_NAMES ? 
-                    fk.REFERENCED_COLUMN_NAMES.split(',').map((f: string) => `"${f.trim()}"`).join(', ') : 
-                    '/* campos referenciados */';
-                
-                ddl += `ALTER TABLE ${schemaPrefix}"${tableName}" ADD CONSTRAINT `;
-                if (fk.CONSTRAINT_NAME) {
-                    ddl += `"${fk.CONSTRAINT_NAME}" `;
-                } else {
-                    ddl += `FK_${Math.floor(Math.random() * 1000)} `;
-                }
-                ddl += `FOREIGN KEY (${fkFields.map((f: any) => `"${f}"`).join(', ')}) `;
-                ddl += `REFERENCES ${referencedTable}(${referencedFields});\n`;
-            }
-        }
-
-        return ddl;
-    }
-
-    /**
-     * Construye el DDL de una función
-     */
     private buildFunctionDDL(func: any): string {
-        let ddl = `CREATE FUNCTION ${func.OWNER_NAME ? `${func.OWNER_NAME}.` : ''}"${func.FUNCTION_NAME}" `;
+        let ddl = `CREATE FUNCTION ${func.FUNCTION_NAME} `;
         
         ddl += '()\n';
 
@@ -487,15 +424,12 @@ class DDLManager extends OperationsManager {
         if (func.FUNCTION_SOURCE) {
             ddl += func.FUNCTION_SOURCE;
         } else {
-            ddl += '/* Código de la función no disponible */';
+            ddl += '/* Codigo de la funcion no disponible */';
         }
         
         return ddl;
     }
 
-    /**
-     * Construye el DDL de un trigger
-     */
     private buildTriggerDDL(trigger: any): string {
         let ddl = `CREATE TRIGGER "${trigger.TRIGGER_NAME}" `;
         
@@ -509,15 +443,12 @@ class DDLManager extends OperationsManager {
         if (trigger.TRIGGER_SOURCE) {
             ddl += trigger.TRIGGER_SOURCE;
         } else {
-            ddl += '/* Código del trigger no disponible */';
+            ddl += '/* Codigo del trigger no disponible */';
         }
         
         return ddl;
     }
 
-    /**
-     * Construye el DDL de un procedimiento
-     */
     private buildProcedureDDL(proc: any): string {
         let ddl = `CREATE PROCEDURE "${proc.PROCEDURE_NAME}" `;
         
@@ -534,9 +465,7 @@ class DDLManager extends OperationsManager {
         return ddl;
     }
 
-    /**
-     * Construye el DDL de una vista
-     */
+
     private buildViewDDL(view: any): string {
         let ddl = `CREATE VIEW "${view.VIEW_NAME}" `;
         
@@ -551,9 +480,7 @@ class DDLManager extends OperationsManager {
         return ddl;
     }
 
-    /**
-     * Construye el DDL de un índice
-     */
+
     private buildIndexDDL(index: any, fields: any[]): string {
         let ddl = `CREATE ${index.IS_UNIQUE ? 'UNIQUE ' : ''}INDEX "${index.INDEX_NAME}" `;
         ddl += `ON ${index.RELATION_NAME} (`;
@@ -568,13 +495,7 @@ class DDLManager extends OperationsManager {
         return ddl;
     }
 
-    // ============================================================================
-    // FUNCIONES AUXILIARES
-    // ============================================================================
 
-    /**
-     * Mapea los tipos de datos de Firebird a nombres legibles
-     */
     private getFirebirdDataType(column: any): string {
         const typeCode = column.dataType;
         const maxLength = column.maxLength;
@@ -585,19 +506,19 @@ class DDLManager extends OperationsManager {
         switch (typeCode) {
             case 7: type = 'SMALLINT'; break;
             case 8: type = 'INTEGER'; break;
-            case 9: type = 'BIGINT'; break; // QUAD se mapea a BIGINT
+            case 9: type = 'BIGINT'; break; 
             case 10: type = 'FLOAT'; break;
-            case 11: type = 'DOUBLE PRECISION'; break; // D_FLOAT se mapea a DOUBLE PRECISION
+            case 11: type = 'DOUBLE PRECISION'; break; 
             case 12: type = 'DATE'; break;
             case 13: type = 'TIME'; break;
             case 14: type = 'CHAR'; break;
-            case 16: type = 'BIGINT'; break; // INT64 se mapea a BIGINT
+            case 16: type = 'BIGINT'; break;
             case 27: type = 'DOUBLE PRECISION'; break;
             case 35: type = 'TIMESTAMP'; break;
             case 37: type = 'VARCHAR'; break;
-            case 40: type = 'VARCHAR'; break; // CSTRING se mapea a VARCHAR
+            case 40: type = 'VARCHAR'; break; 
             case 261: type = 'BLOB'; break;
-            default: type = 'VARCHAR(255)'; break; // UNKNOWN se mapea a VARCHAR por defecto
+            default: type = 'VARCHAR(255)'; break; 
         }
 
         if ((type === 'CHAR' || type === 'VARCHAR') && maxLength) {
@@ -611,9 +532,7 @@ class DDLManager extends OperationsManager {
         return type;
     }
 
-    /**
-     * Obtiene los campos de un índice específico
-     */
+
     private async getIndexFields(connectionId: string, indexName: string): Promise<any[]> {
         try {
             const query = `
@@ -632,9 +551,7 @@ class DDLManager extends OperationsManager {
         }
     }
 
-    /**
-     * Obtiene el tipo de trigger basado en el código numérico
-     */
+
     private getTriggerType(type: number): string {
         switch (type) {
             case 1: return 'BEFORE INSERT';
@@ -655,9 +572,7 @@ class DDLManager extends OperationsManager {
         }
     }
 
-    /**
-     * Lista todas las secuencias disponibles (método de debug)
-     */
+
     async listAllSequences(connectionId: string): Promise<any> {
         try {
             if (!this.connections[connectionId]) {
@@ -695,10 +610,9 @@ class DDLManager extends OperationsManager {
         }
     }
 
-    /**
-     * Genera el DDL para crear un paquete (implementación nativa para Firebird)
-     */
-    async generatePackageDDL(connectionId: string, packageName: string, schemaName: string = ''): Promise<any> {
+
+    async generatePackageDDL(connectionId: string, packageName: string): Promise<any> {
+        console.log("1");
         try {
             if (!this.connections[connectionId]) {
                 return {
@@ -706,91 +620,101 @@ class DDLManager extends OperationsManager {
                     message: 'Conexión no encontrada'
                 };
             }
-
-            // Intentar obtener información del paquete con una consulta más específica
-            let query = `
-                SELECT 
-                    TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME,
+            console.log("2");
+            
+            const searchQuery = `
+                SELECT TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME,
                     CAST(P.RDB$PACKAGE_HEADER_SOURCE AS VARCHAR(8000)) AS HEADER_SOURCE,
                     CAST(P.RDB$PACKAGE_BODY_SOURCE AS VARCHAR(8000)) AS BODY_SOURCE,
-                    P.RDB$DESCRIPTION AS DESCRIPTION,
-                    P.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
-                    P.RDB$SECURITY_CLASS AS SECURITY_CLASS,
-                    P.RDB$OWNER_NAME AS OWNER_NAME
+                    P.RDB$DESCRIPTION AS DESCRIPTION
                 FROM RDB$PACKAGES P
-                WHERE P.RDB$PACKAGE_NAME = UPPER(?)
-                AND (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
-                ${schemaName ? `AND P.RDB$OWNER_NAME = UPPER(?)` : ''}
+                WHERE (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
+                AND (
+                    TRIM(P.RDB$PACKAGE_NAME) = ?
+                    OR UPPER(TRIM(P.RDB$PACKAGE_NAME)) = UPPER(?)
+                    OR LOWER(TRIM(P.RDB$PACKAGE_NAME)) = LOWER(?)
+                )
             `;
-
-            const params = schemaName ? [packageName, schemaName] : [packageName];
-            let result = await this.executeQuery(connectionId, query, params);
-
-            if (!result.success || !result.data || result.data.length === 0) {
+            console.log("3");
+           
+            const result = await this.executeQuery(connectionId, searchQuery, [packageName, packageName, packageName]);
+            console.log("5");
+            
+            if (!result.success) {
                 return {
                     success: false,
-                    message: 'Paquete no encontrado'
+                    message: 'Error al buscar el paquete'
                 };
             }
-
-            const packageInfo = result.data[0];
+    
+            console.log("6");
             
-            // Si no hay código fuente o está vacío, intentar con una consulta alternativa
-            if ((!packageInfo.HEADER_SOURCE || packageInfo.HEADER_SOURCE.trim() === '') && 
-                (!packageInfo.BODY_SOURCE || packageInfo.BODY_SOURCE.trim() === '')) {
-                
-                // Intentar obtener el código fuente usando una consulta diferente
-                const altQuery = `
-                    SELECT 
-                        TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME,
-                        P.RDB$PACKAGE_HEADER_SOURCE AS HEADER_SOURCE_RAW,
-                        P.RDB$PACKAGE_BODY_SOURCE AS BODY_SOURCE_RAW,
-                        P.RDB$DESCRIPTION AS DESCRIPTION,
-                        P.RDB$OWNER_NAME AS OWNER_NAME
-                    FROM RDB$PACKAGES P
-                    WHERE P.RDB$PACKAGE_NAME = UPPER(?)
-                    AND (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
-                    ${schemaName ? `AND P.RDB$OWNER_NAME = UPPER(?)` : ''}
-                `;
-                
-                const altResult = await this.executeQuery(connectionId, altQuery, params);
-                if (altResult.success && altResult.data && altResult.data.length > 0) {
-                    const altPackageInfo = altResult.data[0];
-                    packageInfo.HEADER_SOURCE = altPackageInfo.HEADER_SOURCE_RAW;
-                    packageInfo.BODY_SOURCE = altPackageInfo.BODY_SOURCE_RAW;
-                }
+    
+            if (!result.data || result.data.length === 0) {
+                return {
+                    success: false,
+                    message: `No se encontró el paquete: ${packageName}`
+                };
+            }
+    
+            const packageData = result.data[0];
+            
+
+            let ddl = `-- DDL para el paquete: ${packageData.PACKAGE_NAME || packageName}\n\n`;
+    
+ 
+            if (packageData.HEADER_SOURCE) {
+                ddl += `-- HEADER DEL PAQUETE\n`;
+                ddl += `${packageData.HEADER_SOURCE}\n\n`;
+            } else {
+                ddl += `-- HEADER DEL PAQUETE: No disponible\n\n`;
             }
             
-            const ddl = this.buildPackageDDL(packageInfo);
-
+            if (packageData.BODY_SOURCE) {
+                ddl += `-- BODY DEL PAQUETE\n`;
+                ddl += `${packageData.BODY_SOURCE}\n\n`;
+            } else {
+                ddl += `-- BODY DEL PAQUETE: No disponible\n\n`;
+            }
+    
+            if (packageData.DESCRIPTION) {
+                ddl += `-- DESCRIPCION: ${packageData.DESCRIPTION}\n`;
+            }
+    
+            console.log("Generated DDL:", ddl);
+    
             return {
                 success: true,
-                data: ddl,
-                message: 'DDL de paquete generado exitosamente'
+                data: {
+                    ddl: ddl, 
+                    packageName: packageData.PACKAGE_NAME || packageName,
+                    objectType: 'PACKAGE'
+                },
+                message: `DDL generado para el paquete: ${packageData.PACKAGE_NAME || packageName}`
             };
-
+    
         } catch (error: any) {
+            console.log("7 - Error:", error);
             return {
                 success: false,
-                message: 'Error al generar DDL de paquete',
+                message: 'Error al generar DDL del paquete',
                 error: { message: error.message }
             };
         }
     }
 
-    async generateSequenceDDL(connectionId: string, sequenceName: string, schemaName: string = ''): Promise<any> {
+    async generateSequenceDDL(connectionId: string, sequenceName: string): Promise<any> {
         try {
             if (!this.connections[connectionId]) {
                 return {
                     success: false,
-                    message: 'Conexión no encontrada'
+                    message: 'Conexion no encontrada'
                 };
             }
 
             const query = `
                 SELECT 
                     TRIM(G.RDB$GENERATOR_NAME) AS SEQUENCE_NAME,
-                    'SYSDBA' AS SCHEMA_NAME,
                     G.RDB$DESCRIPTION AS DESCRIPTION,
                     G.RDB$GENERATOR_ID AS GENERATOR_ID,
                     G.RDB$SYSTEM_FLAG AS SYSTEM_FLAG
@@ -840,57 +764,12 @@ class DDLManager extends OperationsManager {
         return ddl;
     }
 
-    /**
-     * Construye el DDL de un paquete
-     */
-    private buildPackageDDL(packageInfo: any): string {
-        let ddl = `-- ========================================\n`;
-        ddl += `-- PAQUETE: ${packageInfo.PACKAGE_NAME}\n`;
-        ddl += `-- ========================================\n\n`;
-        
-        // Agregar descripción si existe
-        if (packageInfo.DESCRIPTION) {
-            ddl += `-- Descripción: ${packageInfo.DESCRIPTION}\n`;
-            ddl += `-- Propietario: ${packageInfo.OWNER_NAME || 'SYSDBA'}\n\n`;
-        }
-        
-        // Agregar header del paquete (especificación)
-        if (packageInfo.HEADER_SOURCE && packageInfo.HEADER_SOURCE.trim() !== '') {
-            ddl += `-- ESPECIFICACIÓN DEL PAQUETE (HEADER)\n`;
-            ddl += `-- ========================================\n`;
-            ddl += packageInfo.HEADER_SOURCE;
-            ddl += `\n\n`;
-        }
-        
-        // Agregar body del paquete (implementación)
-        if (packageInfo.BODY_SOURCE && packageInfo.BODY_SOURCE.trim() !== '') {
-            ddl += `-- IMPLEMENTACIÓN DEL PAQUETE (BODY)\n`;
-            ddl += `-- ========================================\n`;
-            ddl += packageInfo.BODY_SOURCE;
-            ddl += `\n\n`;
-        }
-        
-        // Si no hay código fuente disponible o está vacío
-        if ((!packageInfo.HEADER_SOURCE || packageInfo.HEADER_SOURCE.trim() === '') && 
-            (!packageInfo.BODY_SOURCE || packageInfo.BODY_SOURCE.trim() === '')) {
-            ddl += `-- Código fuente del paquete no disponible\n`;
-            ddl += `-- El paquete puede estar compilado o no tener código fuente\n`;
-            ddl += `-- Para ver el código fuente, use herramientas como isql o FlameRobin\n\n`;
-        }
-        
-        ddl += `-- FIN DEL PAQUETE ${packageInfo.PACKAGE_NAME}\n`;
-        ddl += `-- ========================================\n`;
-        
-        return ddl;
-    }
-
-
     async generateUserDDL(connectionId: string, userName: string): Promise<any> {
         try {
             if (!this.connections[connectionId]) {
                 return {
                     success: false,
-                    message: 'Conexión no encontrada'
+                    message: 'Conexion no encontrada'
                 };
             }
 
@@ -932,9 +811,7 @@ class DDLManager extends OperationsManager {
         }
     }
 
-    /**
-     * Construye el DDL de un usuario
-     */
+
     private buildUserDDL(user: any): string {
         let ddl = `CREATE USER "${user.USER_NAME}"`;
         
@@ -948,172 +825,12 @@ class DDLManager extends OperationsManager {
         return ddl;
     }
 
-    /**
-     * Obtiene todos los paquetes de un esquema (implementación nativa para Firebird)
-     */
-    async getPackages(connectionId: string, schemaName: string = ''): Promise<any> {
-        try {
-            if (!this.connections[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
 
-            // Firebird tiene soporte nativo para paquetes usando RDB$PACKAGES
-            // Primero probamos una consulta simple para ver si hay paquetes
-            let query;
-            if (schemaName) {
-                query = `
-                    SELECT 
-                        'PACKAGE' AS OBJECT_TYPE,
-                        TRIM(COALESCE(P.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
-                        TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME,
-                        CAST(P.RDB$PACKAGE_HEADER_SOURCE AS VARCHAR(8000)) AS HEADER_SOURCE,
-                        CAST(P.RDB$PACKAGE_BODY_SOURCE AS VARCHAR(8000)) AS BODY_SOURCE,
-                        P.RDB$DESCRIPTION AS DESCRIPTION,
-                        P.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
-                        P.RDB$SECURITY_CLASS AS SECURITY_CLASS,
-                        P.RDB$OWNER_NAME AS OWNER_NAME
-                    FROM RDB$PACKAGES P
-                    WHERE (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
-                    AND P.RDB$OWNER_NAME = UPPER(?)
-                    ORDER BY P.RDB$PACKAGE_NAME
-                `;
-            } else {
-                // Consulta más simple para ver todos los paquetes
-                query = `
-                    SELECT 
-                        'PACKAGE' AS OBJECT_TYPE,
-                        TRIM(COALESCE(P.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
-                        TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME,
-                        CAST(P.RDB$PACKAGE_HEADER_SOURCE AS VARCHAR(8000)) AS HEADER_SOURCE,
-                        CAST(P.RDB$PACKAGE_BODY_SOURCE AS VARCHAR(8000)) AS BODY_SOURCE,
-                        P.RDB$DESCRIPTION AS DESCRIPTION,
-                        P.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
-                        P.RDB$SECURITY_CLASS AS SECURITY_CLASS,
-                        P.RDB$OWNER_NAME AS OWNER_NAME
-                    FROM RDB$PACKAGES P
-                    WHERE (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
-                    ORDER BY P.RDB$PACKAGE_NAME
-                `;
-            }
 
-            const params = schemaName ? [schemaName] : [];
-            const result = await this.executeQuery(connectionId, query, params);
 
-            return {
-                success: true,
-                data: result.data || [],
-                message: `Se encontraron ${result.data ? result.data.length : 0} paquetes`
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al obtener paquetes',
-                error: { message: error.message }
-            };
-        }
-    }
-
-    /**
-     * Obtiene todos los tablespaces de la base de datos
-     */
-    async getTablespaces(connectionId: string): Promise<any> {
-        try {
-            if (!this.connections[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            // Firebird no tiene tablespaces como otros motores, pero podemos retornar un array vacío
-            return {
-                success: true,
-                data: [],
-                message: 'Firebird no soporta tablespaces'
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al obtener tablespaces',
-                error: { message: error.message }
-            };
-        }
-    }
-
-    /**
-     * Verifica la salud de todas las conexiones
-     */
-    async checkConnectionsHealth(): Promise<any> {
-        try {
-            const connectionIds = Object.keys(this.connections);
-            const healthResults = [];
-
-            for (const connectionId of connectionIds) {
-                const isHealthy = await this.checkConnectionHealth(connectionId);
-                healthResults.push({
-                    connectionId,
-                    isHealthy,
-                    config: this.connections[connectionId]?.config
-                });
-            }
-
-            return {
-                success: true,
-                data: healthResults,
-                message: 'Estado de conexiones verificado'
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al verificar salud de conexiones',
-                error: { message: error.message }
-            };
-        }
-    }
-
-    /**
-     * Cierra todas las conexiones (alias para closeAllConnections)
-     */
-    async closeAllconection(): Promise<any> {
-        try {
-            await this.closeAllConnections();
-            return {
-                success: true,
-                message: 'Todas las conexiones cerradas'
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al cerrar conexiones',
-                error: { message: error.message }
-            };
-        }
-    }
-
-    /**
-     * Agrega una conexión (alias para addConnection)
-     */
-    async addConection(config: any): Promise<any> {
-        try {
-            return await this.addConnection(config);
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al agregar conexión',
-                error: { message: error.message }
-            };
-        }
-    }
-
-    /**
-     * Crea una vista (alias para createView de OperationsManager)
-     */
     async createViewFromData(connectionId: string, viewData: any): Promise<any> {
         try {
-            return await this.createView(connectionId, viewData.schemaName, viewData.viewName, viewData.selectQuery, viewData.columnNames, viewData.withCheckOption);
+            return await this.createView(connectionId, viewData.viewName, viewData.selectQuery, viewData.columnNames, viewData.withCheckOption);
         } catch (error: any) {
             return {
                 success: false,
@@ -1123,17 +840,16 @@ class DDLManager extends OperationsManager {
         }
     }
 
-    /**
-     * Obtiene los campos de una restricción
-     */
+ 
     private getConstraintFields(columns: any[], constraint: any): string[] {
         try {
+
             if (constraint.COLUMN_NAMES) {
-                // Si ya tenemos los nombres de las columnas en la restricción
+
                 return constraint.COLUMN_NAMES.split(',').map((name: string) => name.trim());
             }
             
-            // Si no tenemos los nombres, intentar obtenerlos de las columnas
+    
             if (constraint.COLUMN_POSITIONS) {
                 const positions = constraint.COLUMN_POSITIONS.split(',').map((pos: string) => parseInt(pos.trim()));
                 return positions.map((pos: number) => {
@@ -1142,10 +858,10 @@ class DDLManager extends OperationsManager {
                 });
             }
             
-            // Fallback: usar la primera columna
+
             return columns.length > 0 ? [columns[0].name] : ['UNKNOWN_COLUMN'];
         } catch (error) {
-            // Fallback: usar la primera columna
+
             return columns.length > 0 ? [columns[0].name] : ['UNKNOWN_COLUMN'];
         }
     }

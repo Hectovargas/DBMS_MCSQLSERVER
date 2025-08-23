@@ -9,7 +9,7 @@
 
 /* ========== ENCABEZADO DE LA APLICACIÓN ========== */
 .header {
-  display: flex; /* Habilita flexbox */
+  display: flex; 
   justify-content: space-between; /* Distribuye elementos: título a la izquierda, botón a la derecha */
   align-items: center; /* Centra verticalmente los elementos */
   padding: 1rem 2rem; /* Espacio interno: 1rem arriba/abajo, 2rem izquierda/derecha */
@@ -84,7 +84,6 @@
   background: #0056b3; /* Color azul más oscuro al pasar el mouse */
 }
 
-/* ========== CONTENIDO PRINCIPAL DE LA APLICACIÓN ========== */
 /* ========== CONTENIDO PRINCIPAL DE LA APLICACIÓN ========== */
 .app-content {
   display: flex; /* Habilita flexbox */

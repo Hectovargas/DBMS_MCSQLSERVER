@@ -1,3 +1,5 @@
+import console = require("node:console");
+
 const Firebird = require('node-firebird');
 const fs = require('fs').promises;
 const path = require('path');
@@ -396,10 +398,11 @@ class DatabaseManager {
             const connection = this.connections[connectionId];
 
             if (!connection.isConnected || !connection.pool) {
-                const reconnectResult = await this.connectToDatabase(connectionId);
-                if (!reconnectResult.success) {
-                    throw new Error(`La conexión no está activa y no se pudo reconectar: ${reconnectResult.message}`);
-                }
+                return {
+                    success: false,
+                    error: 'La conexión no está activa. Por favor, conéctate primero.',
+                    message: 'Conexión no activa'
+                };
             }
 
             connection.lastUsed = new Date();
@@ -489,6 +492,47 @@ class DatabaseManager {
             await this.disconnectFromDatabase(connectionId);
         }
     }
+
+    async getPackages(connectionId: string): Promise<any> {
+        try {
+            if (!this.connections[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            const query = `
+                SELECT 
+                    'PACKAGE' AS OBJECT_TYPE,
+                    TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME,
+                    CAST(P.RDB$PACKAGE_HEADER_SOURCE AS VARCHAR(8000)) AS HEADER_SOURCE,
+                    CAST(P.RDB$PACKAGE_BODY_SOURCE AS VARCHAR(8000)) AS BODY_SOURCE,
+                    P.RDB$DESCRIPTION AS DESCRIPTION,
+                    P.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
+                    P.RDB$SECURITY_CLASS AS SECURITY_CLASS
+                FROM RDB$PACKAGES P
+                WHERE (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
+                ORDER BY P.RDB$PACKAGE_NAME
+            `;
+
+            const result = await this.executeQuery(connectionId, query);
+
+            return {
+                success: true,
+                data: result.data || [],
+                message: `Se encontraron ${result.data ? result.data.length : 0} paquetes`
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al obtener paquetes',
+                error: { message: error.message }
+            };
+        }
+    }
+
+  
 }
 
 module.exports = DatabaseManager;

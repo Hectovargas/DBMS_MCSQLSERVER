@@ -2,64 +2,15 @@ const DatabaseManager = require('./databaseManager_main');
 
 class MetadataManager extends DatabaseManager {
 
-    async getSchemas(connectionId: string): Promise<any> {
-        try {
-            const isHealthy = await this.checkConnectionHealth(connectionId);
-            if (!isHealthy) {
-                const reconnectResult = await this.connectToDatabase(connectionId);
-                if (!reconnectResult.success) {
-                    return {
-                        success: false,
-                        message: 'No se pudo establecer conexión con la base de datos',
-                        error: { message: reconnectResult.message }
-                    };
-                }
-            }
-
-            const query = `
-                SELECT DISTINCT 
-                    TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) as SCHEMA_NAME
-                FROM RDB$RELATIONS 
-                WHERE RDB$VIEW_BLR IS NULL 
-                    AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
-                ORDER BY RDB$OWNER_NAME
-            `;
-
-            const result = await this.executeQuery(connectionId, query);
-
-            if (result.success && this.connections[connectionId]) {
-                this.connections[connectionId].isConnected = true;
-                this.connections[connectionId].config.isActive = true;
-                this.connections[connectionId].lastUsed = new Date();
-            }
-
-            return result;
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al obtener esquemas',
-                error: { message: error.message }
-            };
-        }
-    }
-
-
-    async getTables(connectionId: string, schemaName: string = ''): Promise<any> {
+    async getTables(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-                TRIM(RDB$RELATION_NAME) as TABLE_NAME,
-                TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) as SCHEMA_NAME,
-                RDB$DESCRIPTION as DESCRIPTION
+            TRIM(RDB$RELATION_NAME) as TABLE_NAME
             FROM RDB$RELATIONS 
             WHERE RDB$VIEW_BLR IS NULL 
-                AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+            AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+            ORDER BY RDB$RELATION_NAME
         `;
-
-        if (schemaName) {
-            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
-        }
-
-        query += ` ORDER BY RDB$RELATION_NAME`;
 
         const result = await this.executeQuery(connectionId, query);
 
@@ -72,76 +23,89 @@ class MetadataManager extends DatabaseManager {
         return result;
     }
 
-  
-    async getViews(connectionId: string, schemaName: string = ''): Promise<any> {
+
+    async getViews(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-                TRIM(RDB$RELATION_NAME) as VIEW_NAME,
-                TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) as SCHEMA_NAME,
-                RDB$DESCRIPTION as DESCRIPTION
+            TRIM(RDB$RELATION_NAME) as VIEW_NAME
             FROM RDB$RELATIONS 
             WHERE RDB$VIEW_BLR IS NOT NULL 
                 AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+                 ORDER BY RDB$RELATION_NAME
         `;
-
-        if (schemaName) {
-            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
-        }
-
-        query += ` ORDER BY RDB$RELATION_NAME`;
 
         return this.executeQuery(connectionId, query);
     }
 
 
-    async getProcedures(connectionId: string, schemaName: string = ''): Promise<any> {
+    async getProcedures(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-                TRIM(RDB$PROCEDURE_NAME) AS PROCEDURE_NAME,
-                TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
-                RDB$DESCRIPTION AS DESCRIPTION
-            FROM RDB$PROCEDURES
-            WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+            TRIM(PR.RDB$PROCEDURE_NAME) AS PROCEDURE_NAME
+            FROM RDB$PROCEDURES PR
+            WHERE (PR.RDB$SYSTEM_FLAG IS NULL OR PR.RDB$SYSTEM_FLAG = 0)
+            AND PR.RDB$PACKAGE_NAME IS NULL
+            ORDER BY PR.RDB$PROCEDURE_NAME
         `;
 
-        if (schemaName) {
-            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
-        }
-
-        query += ` ORDER BY RDB$PROCEDURE_NAME`;
 
         return this.executeQuery(connectionId, query);
     }
 
 
-    async getFunctions(connectionId: string, schemaName: string = ''): Promise<any> {
+    async getFunctions(connectionId: string): Promise<any> {
         let query = `
-            SELECT 
-                TRIM(RDB$FUNCTION_NAME) AS FUNCTION_NAME,
-                TRIM(COALESCE(RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
-                RDB$DESCRIPTION AS DESCRIPTION
-            FROM RDB$FUNCTIONS
-            WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+        SELECT 
+        TRIM(f.RDB$FUNCTION_NAME) AS FUNCTION_NAME
+        FROM RDB$FUNCTIONS f
+        WHERE (f.RDB$SYSTEM_FLAG IS NULL OR f.RDB$SYSTEM_FLAG = 0)
+        AND f.RDB$PACKAGE_NAME IS NULL
+        ORDER BY f.RDB$FUNCTION_NAME  
         `;
-
-        if (schemaName) {
-            query += ` AND TRIM(RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
-        }
-
-        query += ` ORDER BY RDB$FUNCTION_NAME`;
 
         return this.executeQuery(connectionId, query);
     }
 
+    async getPackages(connectionId: string): Promise<any> {
+        try {
+            if (!this.connections[connectionId]) {
+                return {
+                    success: false,
+                    message: 'Conexión no encontrada'
+                };
+            }
+
+            let query = `
+                    SELECT 
+                    TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME
+                    FROM RDB$PACKAGES P
+                    WHERE (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
+                    ORDER BY P.RDB$PACKAGE_NAME
+                `;
+
+
+            const result = await this.executeQuery(connectionId, query);
+
+            return {
+                success: true,
+                data: result.data || [],
+                message: `Se encontraron ${result.data ? result.data.length : 0} paquetes`
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Error al obtener paquetes',
+                error: { message: error.message }
+            };
+        }
+    }
 
     async getSequences(connectionId: string): Promise<any> {
         const query = `
             SELECT 
-                TRIM(RDB$GENERATOR_NAME) AS SEQUENCE_NAME,
-                RDB$DESCRIPTION AS DESCRIPTION
+            TRIM(RDB$GENERATOR_NAME) AS SEQUENCE_NAME
             FROM RDB$GENERATORS
             WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
-                AND UPPER(RDB$GENERATOR_NAME) NOT LIKE 'RDB$%'
             ORDER BY RDB$GENERATOR_NAME
         `;
 
@@ -149,50 +113,29 @@ class MetadataManager extends DatabaseManager {
     }
 
 
-    async getTriggers(connectionId: string, schemaName: string = ''): Promise<any> {
+    async getTriggers(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-                TRIM(T.RDB$TRIGGER_NAME) AS TRIGGER_NAME,
-                TRIM(T.RDB$RELATION_NAME) AS RELATION_NAME,
-                TRIM(COALESCE(R.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
-                T.RDB$TRIGGER_TYPE AS TRIGGER_TYPE,
-                T.RDB$TRIGGER_SEQUENCE AS SEQUENCE,
-                T.RDB$DESCRIPTION AS DESCRIPTION
+            TRIM(T.RDB$TRIGGER_NAME) AS TRIGGER_NAME
             FROM RDB$TRIGGERS T
             LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = T.RDB$RELATION_NAME
             WHERE (T.RDB$SYSTEM_FLAG IS NULL OR T.RDB$SYSTEM_FLAG = 0)
-                AND (T.RDB$TRIGGER_NAME NOT LIKE 'RDB$%')
+            ORDER BY T.RDB$TRIGGER_NAME
         `;
-
-        if (schemaName) {
-            query += ` AND TRIM(R.RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
-        }
-
-        query += ` ORDER BY T.RDB$TRIGGER_NAME`;
 
         return this.executeQuery(connectionId, query);
     }
 
 
-    async getIndexes(connectionId: string, schemaName: string = ''): Promise<any> {
+    async getIndexes(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-                TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
-                TRIM(I.RDB$RELATION_NAME) AS RELATION_NAME,
-                TRIM(COALESCE(R.RDB$OWNER_NAME, 'SYSDBA')) AS SCHEMA_NAME,
-                I.RDB$UNIQUE_FLAG AS IS_UNIQUE
+            TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME
             FROM RDB$INDICES I
             LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
             WHERE (I.RDB$SYSTEM_FLAG IS NULL OR I.RDB$SYSTEM_FLAG = 0)
-                AND (I.RDB$INDEX_NAME NOT LIKE 'RDB$%')
+            ORDER BY I.RDB$INDEX_NAME
         `;
-
-        if (schemaName) {
-            query += ` AND TRIM(R.RDB$OWNER_NAME) = '${schemaName.trim().toUpperCase()}'`;
-        }
-
-        query += ` ORDER BY I.RDB$INDEX_NAME`;
-
         return this.executeQuery(connectionId, query);
     }
 
@@ -200,11 +143,7 @@ class MetadataManager extends DatabaseManager {
     async getUsers(connectionId: string): Promise<any> {
         const query = `
             SELECT 
-                TRIM(SEC$USER_NAME) AS USER_NAME,
-                SEC$ACTIVE AS ACTIVE,
-                TRIM(SEC$PLUGIN) AS PLUGIN,
-                TRIM(SEC$FIRST_NAME) AS FIRST_NAME,
-                TRIM(SEC$LAST_NAME) AS LAST_NAME
+            TRIM(SEC$USER_NAME) AS USER_NAME
             FROM SEC$USERS
             ORDER BY SEC$USER_NAME
         `;
@@ -212,7 +151,7 @@ class MetadataManager extends DatabaseManager {
     }
 
 
-    async getTablesColumns(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+    async getTablesColumns(connectionId: string, tableName: string): Promise<any> {
         const query = `
             SELECT 
                 TRIM(RF.RDB$FIELD_NAME) AS "name",                  
@@ -221,18 +160,22 @@ class MetadataManager extends DatabaseManager {
                 F.RDB$FIELD_PRECISION AS "precision",               
                 F.RDB$FIELD_SCALE AS "scale",                       
                 CASE WHEN RF.RDB$NULL_FLAG = 1 THEN 0 ELSE 1 END AS "isNullable",
+
                 CASE                                                       
                     WHEN RF.RDB$DEFAULT_SOURCE IS NULL THEN NULL            
                     WHEN CHAR_LENGTH(RF.RDB$DEFAULT_SOURCE) = 0 THEN NULL   
                     ELSE CAST(SUBSTRING(RF.RDB$DEFAULT_SOURCE FROM 9) AS VARCHAR(8000))      
-                END AS "defaultValue",                                      
+                END AS "defaultValue", 
+
                 CASE WHEN CPK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isPrimaryKey",
                 CASE WHEN CFK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isForeignKey"
+
             FROM RDB$RELATION_FIELDS RF                             
             INNER JOIN RDB$RELATIONS R                              
                 ON RF.RDB$RELATION_NAME = R.RDB$RELATION_NAME       
             INNER JOIN RDB$FIELDS F                                 
-                ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME           
+                ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME   
+
             LEFT JOIN (                                             
                 SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME       
                 FROM RDB$RELATION_CONSTRAINTS RC                    
@@ -240,37 +183,36 @@ class MetadataManager extends DatabaseManager {
                     ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME         
                 WHERE RC.RDB$CONSTRAINT_TYPE = 'PRIMARY KEY'        
             ) CPK ON CPK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME         
-                AND CPK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME    
+                AND CPK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME  
+
             LEFT JOIN (
                 SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME       
                 FROM RDB$RELATION_CONSTRAINTS RC                    
                 INNER JOIN RDB$INDEX_SEGMENTS S                     
                     ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME         
-                WHERE RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'        
-            ) CFK ON CFK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME         
-                AND CFK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME    
+                WHERE RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'     
+                ) 
+                CFK ON CFK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME         
+                AND CFK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME
+                    
             WHERE RF.RDB$RELATION_NAME = UPPER(?)                  
-            ${schemaName && schemaName.trim() !== '' ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''} 
             ORDER BY RF.RDB$FIELD_POSITION                          
         `;
 
-        const params = schemaName && schemaName.trim() !== ''
-            ? [tableName, schemaName]                               
-            : [tableName];                                          
-
-        const result = await this.executeQuery(connectionId, query, params);
+        const result = await this.executeQuery(connectionId, query, tableName);
+        console.log(result)
 
         if (result.success && this.connections[connectionId]) {
-            this.connections[connectionId].isConnected = true;       
-            this.connections[connectionId].config.isActive = true;  
-            this.connections[connectionId].lastUsed = new Date();   
+            this.connections[connectionId].isConnected = true;
+            this.connections[connectionId].config.isActive = true;
+            this.connections[connectionId].lastUsed = new Date();
         }
 
-        return result; 
+        return result;
     }
 
 
-    async getSupportedDataTypes(connectionId: string): Promise<any> {
+    async getSupportedDataTypes(): Promise<any> {
         const firebirdDataTypes = [
             'INTEGER', 'BIGINT', 'SMALLINT', 'FLOAT', 'DOUBLE PRECISION',
             'CHAR', 'VARCHAR', 'BLOB', 'DATE', 'TIME', 'TIMESTAMP',
@@ -286,46 +228,77 @@ class MetadataManager extends DatabaseManager {
 
 
 
-    protected async getTableIndexes(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+    protected async getTableIndexes(connectionId: string, tableName: string): Promise<any> {
         const query = `
             SELECT 
-                TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
-                I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
-                I.RDB$INDEX_TYPE AS INDEX_TYPE
+            TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
+            I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
+            I.RDB$INDEX_TYPE AS INDEX_TYPE
             FROM RDB$INDICES I
             LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
             WHERE I.RDB$RELATION_NAME = UPPER(?)
-            AND (I.RDB$SYSTEM_FLAG IS NULL OR I.RDB$SYSTEM_FLAG = 0)
-            ${schemaName ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
+            AND (I.RDB$SYSTEM_FLAG IS NULL OR I.RDB$SYSTEM_FLAG = 0);
         `;
 
-        const params = schemaName ? [tableName, schemaName] : [tableName];
+        const params = tableName;
         return this.executeQuery(connectionId, query, params);
     }
 
 
-    protected async getTableConstraints(connectionId: string, tableName: string, schemaName: string = ''): Promise<any> {
+    protected async getTableConstraints(connectionId: string, tableName: string): Promise<any> {
         const query = `
             SELECT 
                 TRIM(RC.RDB$CONSTRAINT_NAME) AS CONSTRAINT_NAME,
                 RC.RDB$CONSTRAINT_TYPE AS CONSTRAINT_TYPE,
                 TRIM(RC.RDB$RELATION_NAME) AS RELATION_NAME,
                 TRIM(RC.RDB$INDEX_NAME) AS INDEX_NAME,
-                TRIM(RC.RDB$DEFERRABLE) AS DEFERRABLE,
-                TRIM(RC.RDB$INITIALLY_DEFERRED) AS INITIALLY_DEFERRED
+                
+                -- Para FOREIGN KEY: información de la tabla y columnas referenciadas
+                TRIM(REF.RDB$RELATION_NAME) AS REFERENCED_TABLE_NAME,
+                
+                -- Columnas locales de la constraint
+                (
+                    SELECT LIST(TRIM(ISG.RDB$FIELD_NAME))
+                    FROM RDB$INDEX_SEGMENTS ISG
+                    WHERE ISG.RDB$INDEX_NAME = RC.RDB$INDEX_NAME
+                    ORDER BY ISG.RDB$FIELD_POSITION
+                ) AS COLUMN_NAMES,
+                
+                -- Columnas referenciadas (para FK)
+                (
+                    SELECT LIST(TRIM(ISG_REF.RDB$FIELD_NAME))
+                    FROM RDB$INDEX_SEGMENTS ISG_REF
+                    WHERE ISG_REF.RDB$INDEX_NAME = SEG.RDB$FOREIGN_KEY
+                    ORDER BY ISG_REF.RDB$FIELD_POSITION
+                ) AS REFERENCED_COLUMN_NAMES
+                
             FROM RDB$RELATION_CONSTRAINTS RC
-            LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = RC.RDB$RELATION_NAME
+            
+            -- LEFT JOIN para FOREIGN KEY (obtener tabla referenciada)
+            LEFT JOIN RDB$REF_CONSTRAINTS REFC ON RC.RDB$CONSTRAINT_NAME = REFC.RDB$CONSTRAINT_NAME
+            LEFT JOIN RDB$RELATION_CONSTRAINTS REF ON REFC.RDB$CONST_NAME_UQ = REF.RDB$CONSTRAINT_NAME
+            
+            -- LEFT JOIN para obtener el índice de la FK
+            LEFT JOIN RDB$INDICES SEG ON RC.RDB$INDEX_NAME = SEG.RDB$INDEX_NAME
+            
             WHERE RC.RDB$RELATION_NAME = UPPER(?)
-            ${schemaName ? `AND R.RDB$OWNER_NAME = UPPER(?)` : ''}
+            ORDER BY RC.RDB$CONSTRAINT_TYPE, RC.RDB$CONSTRAINT_NAME;
         `;
 
-        const params = schemaName ? [tableName, schemaName] : [tableName];
-        return this.executeQuery(connectionId, query, params);
+        return this.executeQuery(connectionId, query, tableName);
     }
 
 
     protected getConstraintFields(columns: any[], constraint: any): string[] {
-        return columns.map(col => col.name);
+        try {
+            if (constraint.COLUMN_NAMES) {
+                return constraint.COLUMN_NAMES.split(',').map((name: string) => name.trim());
+            }
+
+            return columns.map(col => col.name);
+        } catch (error) {
+            return columns.map(col => col.name);
+        }
     }
 }
 

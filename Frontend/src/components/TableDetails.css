@@ -28,15 +28,6 @@
   font-weight: 600; /* Peso de la fuente */
 }
 
-/* ========== NOMBRE DEL ESQUEMA ========== */
-.schema-name {
-  font-size: 14px; /* Tamaño de la fuente */
-  color: var(--text-secondary); /* Color del texto secundario usando variable CSS */
-  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
-  padding: 4px 12px; /* Espacio interno */
-  border-radius: 16px; /* Bordes redondeados (píldora) */
-  font-weight: 500; /* Peso de la fuente */
-}
 
 /* ========== PESTAÑAS DE NAVEGACIÓN ========== */
 .table-tabs {

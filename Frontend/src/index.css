@@ -6,8 +6,7 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  /* Variables de tema claro */
+    
   --bg-primary: #ffffff;
   --bg-secondary: #f8f9fa;
   --text-primary: #213547;
@@ -20,7 +19,6 @@
   --card-bg: #ffffff;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   
-  /* Variables para mensajes y estados */
   --error-bg: #f8d7da;
   --error-text: #721c24;
   --error-border: #dc3545;
@@ -32,7 +30,6 @@
   --disabled-bg: #e9ecef;
   --disabled-text: #6c757d;
   
-  /* Variables para iconos */
   --icon-filter: none;
 
   font-synthesis: none;
@@ -41,7 +38,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Variables de tema oscuro */
 .dark {
   --bg-primary: #1a1a1a;
   --bg-secondary: #2d2d2d;
@@ -55,7 +51,6 @@
   --card-bg: #2d2d2d;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   
-  /* Variables para mensajes y estados en tema oscuro */
   --error-bg: #2d1b1b;
   --error-text: #f8d7da;
   --error-border: #dc3545;
@@ -67,7 +62,6 @@
   --disabled-bg: #2d2d2d;
   --disabled-text: #6c757d;
   
-  /* Variables para iconos en tema oscuro */
   --icon-filter: invert(1) brightness(0.8);
 }
 

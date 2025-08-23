@@ -5,18 +5,15 @@ import DDLViewer from './DDLViewer';
 import './ObjectOperations.css';
 interface ObjectOperationsProps {
   connectionId: string;
-  schemaName?: string;
   onRefresh?: () => void;
 }
 type OperationMode = 'none' | 'create-table' | 'create-view' | 'view-ddl';
 interface DDLObject {
   type: 'table' | 'view' | 'function' | 'procedure' | 'trigger' | 'index' | 'sequence';
   name: string;
-  schemaName?: string;
 }
 const ObjectOperations: React.FC<ObjectOperationsProps> = ({
   connectionId,
-  schemaName = '',
   onRefresh
 }) => {
   const [operationMode, setOperationMode] = useState<OperationMode>('none');
@@ -40,7 +37,6 @@ const ObjectOperations: React.FC<ObjectOperationsProps> = ({
         return (
           <CreateTableForm
             connectionId={connectionId}
-            schemaName={schemaName}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />
@@ -49,7 +45,6 @@ const ObjectOperations: React.FC<ObjectOperationsProps> = ({
         return (
           <CreateViewForm
             connectionId={connectionId}
-            schemaName={schemaName}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />
@@ -90,19 +85,19 @@ const ObjectOperations: React.FC<ObjectOperationsProps> = ({
                 <p>Genera y visualiza el DDL de objetos existentes para modificaciones</p>
                 <div className="ddl-options">
                   <button
-                    onClick={() => openDDLViewer({ type: 'table', name: 'ejemplo_tabla', schemaName })}
+                    onClick={() => openDDLViewer({ type: 'table', name: 'ejemplo_tabla' })}
                     className="btn btn-secondary btn-sm"
                   >
                     Tabla
                   </button>
                   <button
-                    onClick={() => openDDLViewer({ type: 'view', name: 'ejemplo_vista', schemaName })}
+                    onClick={() => openDDLViewer({ type: 'view', name: 'ejemplo_vista' })}
                     className="btn btn-secondary btn-sm"
                   >
                     Vista
                   </button>
                   <button
-                    onClick={() => openDDLViewer({ type: 'function', name: 'ejemplo_funcion', schemaName })}
+                    onClick={() => openDDLViewer({ type: 'function', name: 'ejemplo_funcion' })}
                     className="btn btn-secondary btn-sm"
                   >
                     Función
@@ -154,7 +149,6 @@ const ObjectOperations: React.FC<ObjectOperationsProps> = ({
           connectionId={connectionId}
           objectType={ddlObject.type}
           objectName={ddlObject.name}
-          schemaName={ddlObject.schemaName}
           onClose={closeDDLViewer}
         />
       )}

@@ -4,12 +4,11 @@ class OperationsManager extends MetadataManager {
     
     async createTable(params: {
         connectionId: string; 
-        schemaName: string; 
         tableName: string; 
         columns: any[];
     }): Promise<any> {
         try {
-            const { connectionId, schemaName, tableName, columns } = params;
+            const { connectionId, tableName, columns } = params;
             
             if (!this.connections[connectionId]) {
                 return {
@@ -25,22 +24,22 @@ class OperationsManager extends MetadataManager {
                 };
             }
 
-            const existsResult = await this.checkTableExists(connectionId, schemaName, tableName);
+            const existsResult = await this.checkTableExists(connectionId,  tableName);
             if (existsResult.success && existsResult.exists) {
                 return {
                     success: false,
-                    message: `La tabla ${tableName} ya existe en el esquema ${schemaName}`
+                    message: `La tabla ${tableName} ya existe`
                 };
             }
 
-            const sql = this.generateCreateTableSQL(schemaName, tableName, columns);
+            const sql = this.generateCreateTableSQL(tableName, columns);
             const result = await this.executeQuery(connectionId, sql);
 
             if (result.success) {
                 return {
                     success: true,
                     message: `Tabla ${tableName} creada exitosamente`,
-                    data: { tableName, schemaName, columns }
+                    data: { tableName, columns }
                 };
             } else {
                 return {
@@ -60,7 +59,6 @@ class OperationsManager extends MetadataManager {
 
     async createView(params: {
         connectionId: string;
-        schemaName: string;
         viewName: string;
         selectQuery: string;
         columnNames?: string[];
@@ -69,7 +67,6 @@ class OperationsManager extends MetadataManager {
         try {
             const {
                 connectionId,
-                schemaName,
                 viewName,
                 selectQuery,
                 columnNames,
@@ -90,16 +87,15 @@ class OperationsManager extends MetadataManager {
                 };
             }
 
-            const existsResult = await this.checkViewExists(connectionId, schemaName, viewName);
+            const existsResult = await this.checkViewExists(connectionId, viewName);
             if (existsResult.success && existsResult.exists) {
                 return {
                     success: false,
-                    message: `La vista ${viewName} ya existe en el esquema ${schemaName}`
+                    message: `La vista ${viewName} ya existe`
                 };
             }
 
             const sql = this.generateCreateViewSQL(
-                schemaName,
                 viewName,
                 selectQuery,
                 columnNames,
@@ -114,7 +110,6 @@ class OperationsManager extends MetadataManager {
                     message: `Vista ${viewName} creada exitosamente`,
                     data: {
                         viewName,
-                        schemaName,
                         selectQuery,
                         columnNames,
                         withCheckOption
@@ -138,16 +133,14 @@ class OperationsManager extends MetadataManager {
 
     async checkTableExists(
         connectionId: string,
-        schemaName: string,
         tableName: string
     ): Promise<{ success: boolean; exists: boolean; message?: string }> {
         try {
             const query = `SELECT 1 
                 FROM RDB$RELATIONS 
-                WHERE RDB$RELATION_NAME = UPPER(?) ${schemaName ? `AND RDB$OWNER_NAME = UPPER(?)` : ''}`;
+                WHERE RDB$RELATION_NAME = UPPER(?)`;
 
-            const params = schemaName ? [tableName, schemaName] : [tableName];
-            const result = await this.executeQuery(connectionId, query, params);
+            const result = await this.executeQuery(connectionId, query, tableName);
 
             return {
                 success: true,
@@ -165,7 +158,6 @@ class OperationsManager extends MetadataManager {
 
     async checkViewExists(
         connectionId: string,
-        schemaName: string,
         viewName: string
     ): Promise<{ success: boolean; exists: boolean; message?: string }> {
         try {
@@ -174,11 +166,9 @@ class OperationsManager extends MetadataManager {
                 FROM RDB$RELATIONS 
                 WHERE RDB$RELATION_NAME = UPPER(?)
                 AND RDB$VIEW_BLR IS NOT NULL
-                ${schemaName ? `AND RDB$OWNER_NAME = UPPER(?)` : ''}
             `;
 
-            const params = schemaName ? [viewName, schemaName] : [viewName];
-            const result = await this.executeQuery(connectionId, query, params);
+            const result = await this.executeQuery(connectionId, query, viewName);
 
             return {
                 success: true,
@@ -195,7 +185,7 @@ class OperationsManager extends MetadataManager {
 
 
 
-    private generateCreateTableSQL(schemaName: string, tableName: string, columns: any[]): string {
+    private generateCreateTableSQL( tableName: string, columns: any[]): string {
         const columnDefinitions = columns.map(col => {
             let definition = `${col.name.toUpperCase()} ${col.type.toUpperCase()}`;
 
@@ -237,7 +227,6 @@ class OperationsManager extends MetadataManager {
 
 
     private generateCreateViewSQL(
-        schemaName: string,
         viewName: string,
         selectQuery: string,
         columnNames?: string[],

@@ -213,37 +213,9 @@ class databaseController {
   
   }
 
-  async getSchemas(req: any, res: any): Promise<void> {
-    try {
-      const { connectionId } = req.params;
-      
-      if (!connectionId) {
-        res.status(400).json({
-          success: false,
-          message: 'connectionId es requerido'
-        });
-        return;
-      }
-
-      const result = await databaseManager.getSchemas(connectionId);
-      
-      if (result.success) {
-        res.status(200).json(result);
-      } else {
-        res.status(400).json(result);
-      }
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al obtener esquemas',
-        error: { message: error.message }
-      });
-    }
-  }
-
   async getTables(req: any, res: any): Promise<void> {
     try {
-      const { connectionId, schemaName = '' } = req.params;
+      const { connectionId} = req.params;
       
       if (!connectionId) {
         res.status(400).json({
@@ -253,7 +225,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.getTables(connectionId, schemaName);
+      const result = await databaseManager.getTables(connectionId);
       
       if (result.success) {
         res.status(200).json(result);
@@ -271,12 +243,12 @@ class databaseController {
 
   async getViews(req: any, res: any): Promise<void> {
     try {
-      const { connectionId, schemaName = '' } = req.params;
+      const { connectionId} = req.params;
       if (!connectionId) {
         res.status(400).json({ success: false, message: 'connectionId es requerido' });
         return;
       }
-      const result = await databaseManager.getViews(connectionId, schemaName);
+      const result = await databaseManager.getViews(connectionId);
       if (result.success) {
         res.status(200).json(result);
       } else {
@@ -289,12 +261,12 @@ class databaseController {
 
   async getPackages(req: any, res: any): Promise<void> {
     try {
-      const { connectionId, schemaName = '' } = req.params;
+      const { connectionId } = req.params;
       if (!connectionId) {
         res.status(400).json({ success: false, message: 'connectionId es requerido' });
         return;
       }
-      const result = await databaseManager.getPackages(connectionId, schemaName);
+      const result = await databaseManager.getPackages(connectionId);
       if (result.success) {
         res.status(200).json(result);
       } else {
@@ -307,12 +279,12 @@ class databaseController {
 
   async getProcedures(req: any, res: any): Promise<void> {
     try {
-      const { connectionId, schemaName = '' } = req.params;
+      const { connectionId} = req.params;
       if (!connectionId) {
         res.status(400).json({ success: false, message: 'connectionId es requerido' });
         return;
       }
-      const result = await databaseManager.getProcedures(connectionId, schemaName);
+      const result = await databaseManager.getProcedures(connectionId);
       if (result.success) {
         res.status(200).json(result);
       } else {
@@ -325,12 +297,12 @@ class databaseController {
 
   async getFunctions(req: any, res: any): Promise<void> {
     try {
-      const { connectionId, schemaName = '' } = req.params;
+      const { connectionId} = req.params;
       if (!connectionId) {
         res.status(400).json({ success: false, message: 'connectionId es requerido' });
         return;
       }
-      const result = await databaseManager.getFunctions(connectionId, schemaName);
+      const result = await databaseManager.getFunctions(connectionId);
       if (result.success) {
         res.status(200).json(result);
       } else {
@@ -361,12 +333,12 @@ class databaseController {
 
   async getTriggers(req: any, res: any): Promise<void> {
     try {
-      const { connectionId, schemaName = '' } = req.params;
+      const { connectionId} = req.params;
       if (!connectionId) {
         res.status(400).json({ success: false, message: 'connectionId es requerido' });
         return;
       }
-      const result = await databaseManager.getTriggers(connectionId, schemaName);
+      const result = await databaseManager.getTriggers(connectionId);
       if (result.success) {
         res.status(200).json(result);
       } else {
@@ -379,12 +351,12 @@ class databaseController {
 
   async getIndexes(req: any, res: any): Promise<void> {
     try {
-      const { connectionId, schemaName = '' } = req.params;
+      const { connectionId} = req.params;
       if (!connectionId) {
         res.status(400).json({ success: false, message: 'connectionId es requerido' });
         return;
       }
-      const result = await databaseManager.getIndexes(connectionId, schemaName);
+      const result = await databaseManager.getIndexes(connectionId);
       if (result.success) {
         res.status(200).json(result);
       } else {
@@ -430,9 +402,8 @@ class databaseController {
   async getTableColumns(req: any, res: any): Promise<void> {
     try {
       const { connectionId, tableName } = req.params;
-      const { schemaName = '' } = req.query;
       
-      console.log('getTableColumns called with:', { connectionId, tableName, schemaName });
+      console.log('getTableColumns called with:', { connectionId, tableName });
       
       if (!connectionId || !tableName) {
         res.status(400).json({
@@ -442,7 +413,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.getTablesColumns(connectionId, tableName, schemaName);
+      const result = await databaseManager.getTablesColumns(connectionId, tableName);
       
       console.log('getTableColumns result:', result);
       
@@ -497,7 +468,6 @@ class databaseController {
   async generateTableDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, tableName } = req.params;
-      const { schemaName = '' } = req.query;
       
       if (!connectionId || !tableName) {
         res.status(400).json({
@@ -507,7 +477,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.generateTableDDL(connectionId, tableName, schemaName);
+      const result = await databaseManager.generateTableDDL(connectionId, tableName);
       
       if (result.success) {
         res.status(200).json(result);
@@ -526,7 +496,6 @@ class databaseController {
   async generateFunctionDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, functionName } = req.params;
-      const { schemaName = '' } = req.query;
       
       if (!connectionId || !functionName) {
         res.status(400).json({
@@ -536,7 +505,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.generateFunctionDDL(connectionId, functionName, schemaName);
+      const result = await databaseManager.generateFunctionDDL(connectionId, functionName);
       
       if (result.success) {
         res.status(200).json(result);
@@ -555,7 +524,6 @@ class databaseController {
   async generateTriggerDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, triggerName } = req.params;
-      const { schemaName = '' } = req.query;
       
       if (!connectionId || !triggerName) {
         res.status(400).json({
@@ -565,7 +533,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.generateTriggerDDL(connectionId, triggerName, schemaName);
+      const result = await databaseManager.generateTriggerDDL(connectionId, triggerName);
       
       if (result.success) {
         res.status(200).json(result);
@@ -584,7 +552,6 @@ class databaseController {
   async generateProcedureDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, procedureName } = req.params;
-      const { schemaName = '' } = req.query;
       
       if (!connectionId || !procedureName) {
         res.status(400).json({
@@ -594,7 +561,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.generateProcedureDDL(connectionId, procedureName, schemaName);
+      const result = await databaseManager.generateProcedureDDL(connectionId, procedureName);
       
       if (result.success) {
         res.status(200).json(result);
@@ -613,7 +580,6 @@ class databaseController {
   async generateViewDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, viewName } = req.params;
-      const { schemaName = '' } = req.query;
       
       if (!connectionId || !viewName) {
         res.status(400).json({
@@ -623,7 +589,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.generateViewDDL(connectionId, viewName, schemaName);
+      const result = await databaseManager.generateViewDDL(connectionId, viewName);
       
       if (result.success) {
         res.status(200).json(result);
@@ -642,7 +608,6 @@ class databaseController {
   async generateIndexDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, indexName } = req.params;
-      const { schemaName = '' } = req.query;
       
       if (!connectionId || !indexName) {
         res.status(400).json({
@@ -652,7 +617,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.generateIndexDDL(connectionId, indexName, schemaName);
+      const result = await databaseManager.generateIndexDDL(connectionId, indexName);
       
       if (result.success) {
         res.status(200).json(result);
@@ -671,7 +636,6 @@ class databaseController {
   async generatePackageDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, packageName } = req.params;
-      const { schemaName = '' } = req.query;
       
       if (!connectionId || !packageName) {
         res.status(400).json({
@@ -681,7 +645,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.generatePackageDDL(connectionId, packageName, schemaName);
+      const result = await databaseManager.generatePackageDDL(connectionId, packageName);
       
       if (result.success) {
         res.status(200).json(result);
@@ -700,7 +664,7 @@ class databaseController {
   async generateSequenceDDL(req: any, res: any): Promise<void> {
     try {
       const { connectionId, sequenceName } = req.params;
-      const { schemaName = '' } = req.query;
+
       
       if (!connectionId || !sequenceName) {
         res.status(400).json({
@@ -710,7 +674,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.generateSequenceDDL(connectionId, sequenceName, schemaName);
+      const result = await databaseManager.generateSequenceDDL(connectionId, sequenceName);
       
       if (result.success) {
         res.status(200).json(result);
@@ -782,7 +746,6 @@ class databaseController {
     }
   }
 
-  // Object Creation Methods
   async createTable(req: any, res: any): Promise<void> {
     try {
       const { connectionId } = req.params;
@@ -806,7 +769,6 @@ class databaseController {
 
       const result = await databaseManager.createTable({
         connectionId,
-        schemaName: tableData.schemaName || '',
         tableName: tableData.tableName,
         columns: tableData.columns
       });
