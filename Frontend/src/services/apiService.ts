@@ -490,35 +490,45 @@ class ApiService {
     }
   }
 
+async createTable(connectionId: string, tableData: {
+  tableName: string;
+  columns: Array<{
+    name: string;
+    type: string;
+    length?: number;
+    precision?: number;
+    scale?: number;
+    nullable: boolean;
+    defaultValue?: string;
+    primaryKey: boolean;
+    unique: boolean;
+    checkConstraint?: string;
+    foreignKey?: {
+      referencedTable: string;
+      referencedColumn: string;
+    };
+  }>;
+}): Promise<any> {
+  try {
+    console.log("Enviando datos al backend para connectionId:", connectionId);
+    console.log("Datos:", tableData);
+    
+    const response = await fetch(`${API_BASE}/${connectionId}/tables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(tableData),
+    });
 
-  async createTable(connectionId: string, tableData: {
-    tableName: string;
-    columns: Array<{
-      name: string;
-      type: string;
-      length?: number;
-      nullable: boolean;
-      defaultValue?: string;
-      primaryKey: boolean;
-      unique: boolean;
-    }>;
-  }): Promise<any> {
-    try {
-
-      const response = await fetch(`${API_BASE}/${connectionId}/tables`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(tableData),
-      });
-      
-      return await this.handleResponse(response);
-    } catch (error) {
-      console.error('Error en createTable:', error);
-      throw error;
-    }
+    console.log("Response status:", response.status);
+    
+    return await this.handleResponse(response);
+  } catch (error) {
+    console.error('Error en createTable:', error);
+    throw error;
   }
+}
 
 
   async createView(connectionId: string, viewData: {

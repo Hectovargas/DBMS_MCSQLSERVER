@@ -19,7 +19,6 @@ interface Column {
   nullable: boolean;
   primaryKey: boolean;
   unique: boolean;
-  autoIncrement: boolean;
   defaultValue?: string;
   checkConstraint?: string;
   foreignKey?: ForeignKeyInfo;
@@ -28,8 +27,6 @@ interface Column {
 interface ForeignKeyInfo {
   referencedTable: string;
   referencedColumn: string;
-  onDelete: 'RESTRICT' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION';
-  onUpdate: 'RESTRICT' | 'CASCADE' | 'SET NULL' | 'SET DEFAULT' | 'NO ACTION';
 }
 
 interface TableInfo {
@@ -52,12 +49,10 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
     nullable: true, 
     primaryKey: false,
     unique: false,
-    autoIncrement: false,
     defaultValue: '' 
   }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [tableExists, setTableExists] = useState(false);
   const [availableTables, setAvailableTables] = useState<TableInfo[]>([]);
   const [loadingTables, setLoadingTables] = useState(false);
 
@@ -69,40 +64,24 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
     'Otros': ['BOOLEAN', 'BLOB', 'CHAR CHARACTER SET OCTETS']
   };
 
-  const cascadeOptions = [
-    { value: 'RESTRICT', label: 'RESTRICT (Bloquear eliminación)' },
-    { value: 'CASCADE', label: 'CASCADE (Eliminar en cascada)' },
-    { value: 'SET NULL', label: 'SET NULL (Establecer NULL)' },
-    { value: 'SET DEFAULT', label: 'SET DEFAULT (Valor por defecto)' },
-    { value: 'NO ACTION', label: 'NO ACTION (Sin acción)' }
-  ];
 
   useEffect(() => {
     const loadAvailableTables = async () => {
       setLoadingTables(true);
       try {
-        const result = await apiService.executeQuery(
-          connectionId,
-          `SELECT RDB$RELATION_NAME as TABLE_NAME FROM RDB$RELATIONS 
-           WHERE RDB$VIEW_BLR IS NULL AND RDB$SYSTEM_FLAG = 0 
-           ORDER BY RDB$RELATION_NAME`
-        );
+        const result = await apiService.getTables(connectionId);
         
         if (result.success && result.data) {
-          const tablePromises = result.data.map(async (row: any) => {
-            const tableName = row.TABLE_NAME?.trim();
+
+          const tablePromises = result.data.map(async (table: any) => {
+            const tableName = table.TABLE_NAME?.trim() || table.table_name?.trim();
             if (!tableName) return null;
             
             try {
-              const columnsResult = await apiService.executeQuery(
-                connectionId,
-                `SELECT RDB$FIELD_NAME as COLUMN_NAME FROM RDB$RELATION_FIELDS 
-                 WHERE RDB$RELATION_NAME = '${tableName}' 
-                 ORDER BY RDB$FIELD_POSITION`
-              );
-              
+
+              const columnsResult = await apiService.getTableColumns(connectionId, tableName);
               const columns = columnsResult.success && columnsResult.data 
-                ? columnsResult.data.map((col: any) => col.COLUMN_NAME?.trim()).filter(Boolean)
+                ? columnsResult.data.map((col: any) => col.name?.trim()).filter(Boolean)
                 : [];
               
               return { name: tableName, columns };
@@ -120,33 +99,43 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
         setLoadingTables(false);
       }
     };
-
+  
     if (isOpen) {
       loadAvailableTables();
     }
   }, [isOpen, connectionId]);
+  
 
-  // Verificar si la tabla existe
+  const [tableExists, setTableExists] = useState(false);
+  
   useEffect(() => {
     const checkTableExists = async () => {
-      if (tableName.trim()) {
-        try {
-          const result = await apiService.executeQuery(
-            connectionId, 
-            `SELECT 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = UPPER('${tableName}')`
-          );
-          setTableExists(!!(result.success && result.data && result.data.length > 0));
-        } catch (err) {
-          setTableExists(false);
-        }
-      } else {
+      if (!tableName.trim()) {
         setTableExists(false);
+        return;
+      }
+      
+      try {
+        const tablesResult = await apiService.getTables(connectionId);
+        if (tablesResult.success && tablesResult.data) {
+          const tableNames = tablesResult.data.map((table: any) => 
+            table.TABLE_NAME?.trim() || table.table_name?.trim()
+          ).filter(Boolean);
+          
+          setTableExists(tableNames.includes(tableName.toUpperCase()));
+        }
+      } catch (err) {
+        console.error('Error checking table existence:', err);
       }
     };
-
-    const timeoutId = setTimeout(checkTableExists, 500);
-    return () => clearTimeout(timeoutId);
+    
+    if (tableName) {
+      checkTableExists();
+    } else {
+      setTableExists(false);
+    }
   }, [tableName, connectionId]);
+
 
   const addColumn = () => {
     setColumns([...columns, { 
@@ -156,7 +145,6 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
       nullable: true, 
       primaryKey: false,
       unique: false,
-      autoIncrement: false,
       defaultValue: '' 
     }]);
   };
@@ -181,13 +169,6 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
       newColumns[index].unique = false; 
     }
     
-    if (field === 'autoIncrement' && value === true) {
-
-      if (!['SMALLINT', 'INTEGER', 'BIGINT'].includes(newColumns[index].type)) {
-        newColumns[index].type = 'INTEGER';
-      }
-      newColumns[index].nullable = false;
-    }
     
     if (field === 'type') {
       const newType = value.toUpperCase();
@@ -200,11 +181,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
         newColumns[index].precision = undefined;
         newColumns[index].scale = undefined;
       }
-      
-
-      if (newColumns[index].autoIncrement && !['SMALLINT', 'INTEGER', 'BIGINT'].includes(newType)) {
-        newColumns[index].autoIncrement = false;
-      }
+    
     }
     
     setColumns(newColumns);
@@ -215,9 +192,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
     if (!newColumns[index].foreignKey) {
       newColumns[index].foreignKey = {
         referencedTable: '',
-        referencedColumn: '',
-        onDelete: 'RESTRICT',
-        onUpdate: 'RESTRICT'
+        referencedColumn: ''
       };
     }
     
@@ -306,74 +281,76 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
     return errors;
   };
 
-  const handleSubmit = async () => {
-    setError('');
-    
-    const validationErrors = validateForm();
-    if (validationErrors.length > 0) {
-      setError(validationErrors.join('\n'));
-      return;
-    }
-    
-    if (tableExists) {
-      setError('La tabla ya existe. Por favor, elija otro nombre.');
-      return;
-    }
-    
-    setLoading(true);
+const handleSubmit = async () => {
+  setError('');
+  
+  const validationErrors = validateForm();
+  if (validationErrors.length > 0) {
+    setError(validationErrors.join('\n'));
+    return;
+  }
+  
+  if (tableExists) {
+    setError('La tabla ya existe. Por favor, elija otro nombre.');
+    return;
+  }
+  
+  setLoading(true);
 
-    try {
-      const tableData = {
-        tableName: tableName.trim(),
-        columns: columns.map(col => ({
-          name: col.name.trim(),
-          type: col.type,
-          length: col.type === 'DECIMAL' || col.type === 'NUMERIC' 
-            ? parseInt(col.precision || '0') 
-            : parseInt(col.size || '0') || 0,
-          precision: col.precision ? parseInt(col.precision) : undefined,
-          scale: col.scale ? parseInt(col.scale) : undefined,
-          nullable: col.nullable,
-          defaultValue: col.defaultValue?.trim() || '',
-          primaryKey: col.primaryKey,
-          unique: col.unique,
-          autoIncrement: col.autoIncrement,
-          checkConstraint: col.checkConstraint?.trim() || '',
-          foreignKey: col.foreignKey ? {
-            referencedTable: col.foreignKey.referencedTable,
-            referencedColumn: col.foreignKey.referencedColumn,
-            onDelete: col.foreignKey.onDelete,
-            onUpdate: col.foreignKey.onUpdate
-          } : undefined
-        }))
-      };
-
-      const result = await apiService.createTable(connectionId, tableData);
-      
-      if (result.success) {
-        alert('Tabla creada exitosamente');
-        onSuccess?.();
-        onClose();
-        setTableName('');
-        setColumns([{ 
-          name: '', 
-          type: 'VARCHAR', 
-          size: '255', 
-          nullable: true, 
-          primaryKey: false,
-          unique: false,
-          autoIncrement: false,
-          defaultValue: '' 
-        }]);
-      } else {
-        setError(result.message || result.error?.message || 'Error al crear la tabla');
-      }
-    } catch (err) {
-      setError('Error al crear la tabla: ' + (err instanceof Error ? err.message : 'Error desconocido'));
-    } finally {
-      setLoading(false);
+  try {
+    // Verificar explícitamente que la conexión esté activa
+    const connectResult = await apiService.connectToDatabase(connectionId);
+    if (!connectResult.success) {
+      throw new Error('No se pudo conectar a la base de datos: ' + connectResult.message);
     }
-  };
+    
+    const tableData = {
+      tableName: tableName.trim(),
+      columns: columns.map(col => ({
+        name: col.name.trim(),
+        type: col.type,
+        length: col.type === 'DECIMAL' || col.type === 'NUMERIC' 
+          ? parseInt(col.precision || '0') 
+          : parseInt(col.size || '0') || 0,
+        precision: col.precision ? parseInt(col.precision) : undefined,
+        scale: col.scale ? parseInt(col.scale) : undefined,
+        nullable: col.nullable,
+        defaultValue: col.defaultValue?.trim() || '',
+        primaryKey: col.primaryKey,
+        unique: col.unique,
+        checkConstraint: col.checkConstraint?.trim() || '',
+        foreignKey: col.foreignKey ? {
+          referencedTable: col.foreignKey.referencedTable,
+          referencedColumn: col.foreignKey.referencedColumn
+        } : undefined
+      }))
+    };
+
+    const result = await apiService.createTable(connectionId, tableData);
+    
+    if (result.success) {
+      alert('Tabla creada exitosamente');
+      onSuccess?.();
+      onClose();
+      setTableName('');
+      setColumns([{ 
+        name: '', 
+        type: 'VARCHAR', 
+        size: '255', 
+        nullable: true, 
+        primaryKey: false,
+        unique: false,
+        defaultValue: '' 
+      }]);
+    } else {
+      setError(result.message || result.error?.message || 'Error al crear la tabla');
+    }
+  } catch (err) {
+    setError('Error al crear la tabla: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getReferencedTableColumns = (tableName: string): string[] => {
     const table = availableTables.find(t => t.name === tableName);
@@ -391,7 +368,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
         </div>
 
         <div className="modal-body">
-          {/* Información de la Tabla */}
+
           <div className="form-section">
             <h3>Información de la Tabla</h3>
             <div className="form-group">
@@ -416,7 +393,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
             </div>
           </div>
 
-          {/* Definición de Columnas */}
+
           <div className="form-section">
             <h3>Definición de Columnas</h3>
             <p className="section-description">
@@ -440,7 +417,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
                   </div>
                   
                   <div className="column-fields">
-                    {/* Nombre de columna */}
+
                     <div className="field-group">
                       <label>
                         Nombre de la Columna <span className="required">*</span>
@@ -455,7 +432,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
                       />
                     </div>
                     
-                    {/* Tipo de dato */}
+
                     <div className="field-group">
                       <label>
                         Tipo de Dato <span className="required">*</span>
@@ -475,7 +452,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
                       </select>
                     </div>
                     
-                    {/* Tamaño para VARCHAR/CHAR */}
+
                     {['VARCHAR', 'CHAR'].includes(column.type) && (
                       <div className="field-group">
                         <label>Tamaño <span className="required">*</span></label>
@@ -491,7 +468,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
                       </div>
                     )}
                     
-                    {/* Precisión y Escala para DECIMAL/NUMERIC */}
+
                     {['DECIMAL', 'NUMERIC'].includes(column.type) && (
                       <>
                         <div className="field-group">
@@ -522,7 +499,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
                       </>
                     )}
                     
-                    {/* Valor por defecto */}
+
                     <div className="field-group">
                       <label>Valor por Defecto</label>
                       <input
@@ -531,39 +508,17 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
                         value={column.defaultValue || ''}
                         onChange={(e) => updateColumn(index, 'defaultValue', e.target.value)}
                         className="field-input"
-                        disabled={column.autoIncrement}
                       />
-                      <small className="field-help">
-                        {column.autoIncrement 
-                          ? 'Valor automático generado por secuencia'
-                          : 'Valor que se asigna automáticamente (opcional)'
-                        }
-                      </small>
                     </div>
                     
-                    {/* Restricción CHECK */}
-                    <div className="field-group">
-                      <label>Restricción CHECK</label>
-                      <input
-                        type="text"
-                        placeholder={`ej: ${column.name} > 0, ${column.name} IN ('A', 'B', 'C')`}
-                        value={column.checkConstraint || ''}
-                        onChange={(e) => updateColumn(index, 'checkConstraint', e.target.value)}
-                        className="field-input"
-                      />
-                      <small className="field-help">
-                        Condición que debe cumplir el valor de la columna (opcional)
-                      </small>
-                    </div>
                     
-                    {/* Opciones de columna */}
+
                     <div className="column-options">
                       <label className="checkbox-label">
                         <input
                           type="checkbox"
                           checked={column.nullable}
                           onChange={(e) => updateColumn(index, 'nullable', e.target.checked)}
-                          disabled={column.primaryKey || column.autoIncrement}
                         />
                         <span className="checkmark"></span>
                         Permitir valores NULL
@@ -590,19 +545,8 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
                         Único (UNIQUE)
                       </label>
                       
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={column.autoIncrement}
-                          onChange={(e) => updateColumn(index, 'autoIncrement', e.target.checked)}
-                          disabled={!['SMALLINT', 'INTEGER', 'BIGINT'].includes(column.type)}
-                        />
-                        <span className="checkmark"></span>
-                        Auto Incremento
-                      </label>
                     </div>
                     
-                    {/* Clave Foránea */}
                     <div className="foreign-key-section">
                       <div className="foreign-key-header">
                         <label>Clave Foránea (Foreign Key)</label>
@@ -662,38 +606,6 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
                               </select>
                             </div>
                           )}
-                          
-                          <div className="cascade-options">
-                            <div className="field-group">
-                              <label>Al Eliminar</label>
-                              <select
-                                value={column.foreignKey.onDelete}
-                                onChange={(e) => updateForeignKey(index, 'onDelete', e.target.value)}
-                                className="field-select"
-                              >
-                                {cascadeOptions.map(option => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            
-                            <div className="field-group">
-                              <label>Al Actualizar</label>
-                              <select
-                                value={column.foreignKey.onUpdate}
-                                onChange={(e) => updateForeignKey(index, 'onUpdate', e.target.value)}
-                                className="field-select"
-                              >
-                                {cascadeOptions.map(option => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
                         </div>
                       )}
                     </div>
@@ -711,7 +623,7 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
             </button>
           </div>
 
-          {/* Errores */}
+ 
           {error && (
             <div className="error-section">
               <div className="error-message">
@@ -720,8 +632,6 @@ const CreateTableForm: React.FC<CreateTableFormProps> = ({
               </div>
             </div>
           )}
-
-          {/* Acciones del formulario */}
           <div className="form-actions">
             <button
               type="button"

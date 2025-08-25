@@ -1275,11 +1275,9 @@ const DatabaseSidebar = forwardRef(({
             zIndex: 1000
           }}
         >
-
-
            {objectContextMenu.objectType === 'table' && !objectContextMenu.objectName && (
             <div className="context-menu-item create-table"  onClick={() => {
-              handleCreateTable(contextMenu.connectionId);
+              handleCreateTable(objectContextMenu.connectionId);
               setContextMenu({ ...contextMenu, isVisible: false });
             }}>
               <span className="tree-icon table-icon-img"></span>
@@ -1290,7 +1288,7 @@ const DatabaseSidebar = forwardRef(({
 
           {objectContextMenu.objectType === 'view' && !objectContextMenu.objectName && (
             <div className="context-menu-item create-view" onClick={() => {
-              handleCreateView(contextMenu.connectionId);
+              handleCreateView(objectContextMenu.connectionId);
               setContextMenu({ ...contextMenu, isVisible: false });
             }}>
               <span className="tree-icon view-icon-img"></span>

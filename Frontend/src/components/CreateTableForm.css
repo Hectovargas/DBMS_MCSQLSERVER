@@ -342,7 +342,7 @@
 
 /* Error Section */
 .error-section {
-  background: #fef2f2;
+  background: #000000;
   border: 1px solid #fecaca;
   border-radius: 8px;
   padding: 20px;
@@ -353,13 +353,14 @@
   color: #dc2626;
   font-size: 0.95rem;
   line-height: 1.5;
+  background: #000000;
 }
 
 .error-message pre {
   margin: 12px 0 0 0;
   white-space: pre-wrap;
   font-family: inherit;
-  background: #fee2e2;
+  background: #000000;
   padding: 12px;
   border-radius: 6px;
   border-left: 4px solid #dc2626;

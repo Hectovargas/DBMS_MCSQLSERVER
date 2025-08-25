@@ -67,12 +67,11 @@ function AppContent() {
 
 
   const handleConnectionSuccess = async () => {
-    // Recargamos las conexiones en el sidebar inmediatamente
+
     if (sidebarRef.current) {
       await sidebarRef.current.loadConnections()
     }
     
-    // También actualizamos el estado local de conexiones
     try {
       const result = await apiService.getAllConnections()
       if (result.success) {

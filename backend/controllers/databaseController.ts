@@ -385,20 +385,6 @@ class databaseController {
     }
   }
 
-  async getTablespaces(req: any, res: any): Promise<void> {
-    try {
-      const { connectionId } = req.params;
-      if (!connectionId) {
-        res.status(400).json({ success: false, message: 'connectionId es requerido' });
-        return;
-      }
-      const result = await databaseManager.getTablespaces(connectionId);
-      res.status(200).json(result);
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Error al obtener tablespaces', error: { message: error.message } });
-    }
-  }
-
   async getTableColumns(req: any, res: any): Promise<void> {
     try {
       const { connectionId, tableName } = req.params;
@@ -746,46 +732,44 @@ class databaseController {
     }
   }
 
-  async createTable(req: any, res: any): Promise<void> {
-    try {
-      const { connectionId } = req.params;
-      const tableData = req.body;
-      
-      if (!connectionId) {
-        res.status(400).json({
-          success: false,
-          message: 'connectionId es requerido'
-        });
-        return;
-      }
-
-      if (!tableData.tableName || !tableData.columns || !Array.isArray(tableData.columns)) {
-        res.status(400).json({
-          success: false,
-          message: 'tableName y columns (array) son requeridos'
-        });
-        return;
-      }
-
-      const result = await databaseManager.createTable({
-        connectionId,
-        tableName: tableData.tableName,
-        columns: tableData.columns
-      });
-      
-      if (result.success) {
-        res.status(201).json(result);
-      } else {
-        res.status(400).json(result);
-      }
-    } catch (error: any) {
-      res.status(500).json({
+async createTable(req: any, res: any): Promise<void> {
+  try {
+    const { connectionId } = req.params;
+    const tableData = req.body;
+    
+    console.log('Creating table for connection:', connectionId);
+    console.log('Table data:', tableData);
+    
+    if (!connectionId) {
+      res.status(400).json({
         success: false,
-        message: 'Error al crear tabla',
-        error: { message: error.message }
+        message: 'connectionId es requerido'
       });
+      return;
     }
+
+    if (!tableData.tableName || !tableData.columns || !Array.isArray(tableData.columns)) {
+      res.status(400).json({
+        success: false,
+        message: 'tableName y columns (array) son requeridos'
+      });
+      return;
+    }
+    const result = await databaseManager.createTable(connectionId, tableData);
+    
+    if (result.success) {
+      res.status(201).json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear tabla',
+      error: { message: error.message }
+    });
   }
+}
 
   async createView(req: any, res: any): Promise<void> {
     try {

@@ -4,8 +4,9 @@ class MetadataManager extends DatabaseManager {
 
     async getTables(connectionId: string): Promise<any> {
         let query = `
+        
             SELECT 
-            TRIM(RDB$RELATION_NAME) as TABLE_NAME
+            RDB$RELATION_NAME as TABLE_NAME
             FROM RDB$RELATIONS 
             WHERE RDB$VIEW_BLR IS NULL 
             AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
@@ -27,11 +28,11 @@ class MetadataManager extends DatabaseManager {
     async getViews(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-            TRIM(RDB$RELATION_NAME) as VIEW_NAME
+            RDB$RELATION_NAME AS VIEW_NAME
             FROM RDB$RELATIONS 
             WHERE RDB$VIEW_BLR IS NOT NULL 
-                AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
-                 ORDER BY RDB$RELATION_NAME
+            AND (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+            ORDER BY RDB$RELATION_NAME
         `;
 
         return this.executeQuery(connectionId, query);
@@ -41,11 +42,11 @@ class MetadataManager extends DatabaseManager {
     async getProcedures(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-            TRIM(PR.RDB$PROCEDURE_NAME) AS PROCEDURE_NAME
-            FROM RDB$PROCEDURES PR
-            WHERE (PR.RDB$SYSTEM_FLAG IS NULL OR PR.RDB$SYSTEM_FLAG = 0)
-            AND PR.RDB$PACKAGE_NAME IS NULL
-            ORDER BY PR.RDB$PROCEDURE_NAME
+            RDB$PROCEDURE_NAME AS PROCEDURE_NAME
+            FROM RDB$PROCEDURES 
+            WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+            AND RDB$PACKAGE_NAME IS NULL
+            ORDER BY RDB$PROCEDURE_NAME
         `;
 
 
@@ -56,11 +57,11 @@ class MetadataManager extends DatabaseManager {
     async getFunctions(connectionId: string): Promise<any> {
         let query = `
         SELECT 
-        TRIM(f.RDB$FUNCTION_NAME) AS FUNCTION_NAME
-        FROM RDB$FUNCTIONS f
-        WHERE (f.RDB$SYSTEM_FLAG IS NULL OR f.RDB$SYSTEM_FLAG = 0)
-        AND f.RDB$PACKAGE_NAME IS NULL
-        ORDER BY f.RDB$FUNCTION_NAME  
+        RDB$FUNCTION_NAME AS FUNCTION_NAME
+        FROM RDB$FUNCTIONS 
+        WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+        AND RDB$PACKAGE_NAME IS NULL
+        ORDER BY RDB$FUNCTION_NAME  
         `;
 
         return this.executeQuery(connectionId, query);
@@ -77,10 +78,10 @@ class MetadataManager extends DatabaseManager {
 
             let query = `
                     SELECT 
-                    TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME
-                    FROM RDB$PACKAGES P
-                    WHERE (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
-                    ORDER BY P.RDB$PACKAGE_NAME
+                    RDB$PACKAGE_NAME AS PACKAGE_NAME
+                    FROM RDB$PACKAGES 
+                    WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+                    ORDER BY RDB$PACKAGE_NAME
                 `;
 
 
@@ -103,7 +104,7 @@ class MetadataManager extends DatabaseManager {
     async getSequences(connectionId: string): Promise<any> {
         const query = `
             SELECT 
-            TRIM(RDB$GENERATOR_NAME) AS SEQUENCE_NAME
+            RDB$GENERATOR_NAME AS SEQUENCE_NAME
             FROM RDB$GENERATORS
             WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
             ORDER BY RDB$GENERATOR_NAME
@@ -116,11 +117,10 @@ class MetadataManager extends DatabaseManager {
     async getTriggers(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-            TRIM(T.RDB$TRIGGER_NAME) AS TRIGGER_NAME
-            FROM RDB$TRIGGERS T
-            LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = T.RDB$RELATION_NAME
-            WHERE (T.RDB$SYSTEM_FLAG IS NULL OR T.RDB$SYSTEM_FLAG = 0)
-            ORDER BY T.RDB$TRIGGER_NAME
+            RDB$TRIGGER_NAME AS TRIGGER_NAME
+            FROM RDB$TRIGGERS 
+            WHERE (RDB$SYSTEM_FLAG IS NULL OR RDB$SYSTEM_FLAG = 0)
+            ORDER BY RDB$TRIGGER_NAME
         `;
 
         return this.executeQuery(connectionId, query);
@@ -130,11 +130,11 @@ class MetadataManager extends DatabaseManager {
     async getIndexes(connectionId: string): Promise<any> {
         let query = `
             SELECT 
-            TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME
+            I.RDB$INDEX_NAME AS INDEX_NAME
             FROM RDB$INDICES I
             LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
             WHERE (I.RDB$SYSTEM_FLAG IS NULL OR I.RDB$SYSTEM_FLAG = 0)
-            ORDER BY I.RDB$INDEX_NAME
+            ORDER BY I.RDB$INDEX_NAME 
         `;
         return this.executeQuery(connectionId, query);
     }
@@ -143,7 +143,7 @@ class MetadataManager extends DatabaseManager {
     async getUsers(connectionId: string): Promise<any> {
         const query = `
             SELECT 
-            TRIM(SEC$USER_NAME) AS USER_NAME
+            SEC$USER_NAME AS USER_NAME
             FROM SEC$USERS
             ORDER BY SEC$USER_NAME
         `;
@@ -231,7 +231,7 @@ class MetadataManager extends DatabaseManager {
     protected async getTableIndexes(connectionId: string, tableName: string): Promise<any> {
         const query = `
             SELECT 
-            TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME,
+            I.RDB$INDEX_NAME AS INDEX_NAME,
             I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
             I.RDB$INDEX_TYPE AS INDEX_TYPE
             FROM RDB$INDICES I
