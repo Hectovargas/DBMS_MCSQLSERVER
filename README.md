@@ -85,4 +85,11 @@ Durante el desarrollo se identificaron **limitaciones inherentes al SGBD Firebir
 - Impacto:  
 - No es posible implementar administración de tablespaces.  
  
-## 3. Estructura del proyecto
+## 7. ubicacion de la logica del proyecto
+-Backend_
+         |-Service_
+                   |-datasbaseManager_main
+                   |-ddlManager.ts
+                   |-metadataManager.ts
+                   |-operationsManager.ts
+        
