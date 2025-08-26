@@ -39,7 +39,7 @@ function AppContent() {
 
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
 
-  const [selectedObjectType, setSelectedObjectType] = useState<'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'user' | null>(null)
+  const [selectedObjectType, setSelectedObjectType] = useState<'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'package' | 'sequence' | 'user' | null>(null)
 
   const [selectedObjectName, setSelectedObjectName] = useState<string | null>(null)
 
@@ -102,7 +102,7 @@ function AppContent() {
   };
 
   
-  const handleObjectSelect = (connectionId: string, objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'sequence' | 'user', objectName: string) => {
+  const handleObjectSelect = (connectionId: string, objectType: 'function' | 'trigger' | 'procedure' | 'view' | 'index' | 'package' | 'sequence' | 'user', objectName: string) => {
     
     if (objectName) {
       setSelectedConnection(connectionId);
@@ -128,7 +128,7 @@ function AppContent() {
   };
 
 
-  const handleViewDDL = (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'sequence' | 'user', objectName: string) => {
+  const handleViewDDL = (connectionId: string, objectType: 'table' | 'view' | 'function' | 'trigger' | 'procedure' | 'index' | 'package' | 'sequence' | 'user', objectName: string) => {
     
  
     setSelectedConnection(connectionId);

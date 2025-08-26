@@ -1,39 +1,35 @@
-/* ========== CONTENEDOR PRINCIPAL DEL EDITOR ========== */
 .query-editor {
-  display: flex; /* Habilita flexbox */
-  flex-direction: column; /* Organiza elementos verticalmente */
-  height: 100%; /* Toma toda la altura disponible */
-  background: var(--bg-secondary); /* Color de fondo usando variable CSS */
-  border-radius: 8px; /* Bordes redondeados */
-  overflow: hidden; /* Oculta contenido que se salga del contenedor */
+  display: flex; 
+  flex-direction: column; 
+  height: 100%; 
+  background: var(--bg-secondary); 
+  border-radius: 8px; 
+  overflow: hidden; 
 }
 
-/* ========== ENCABEZADO DEL EDITOR ========== */
 .query-editor-header {
-  display: flex; /* Habilita flexbox */
-  justify-content: space-between; /* Distribuye elementos: título a la izquierda, botones a la derecha */
-  align-items: center; /* Centra verticalmente los elementos */
-  padding: 16px 20px; /* Espacio interno */
-  background: var(--bg-primary); /* Color de fondo del header */
-  border-bottom: 1px solid var(--border-color); /* Línea separadora inferior */
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 16px 20px; 
+  background: var(--bg-primary); 
+  border-bottom: 1px solid var(--border-color); 
 }
 
-/* ========== INFORMACIÓN DEL ENCABEZADO ========== */
 .header-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-/* ========== TÍTULO DEL EDITOR ========== */
 .query-editor-header h3 {
-  margin: 0; /* Sin márgenes */
-  color: var(--text-primary); /* Color del texto usando variable CSS */
-  font-size: 18px; /* Tamaño de la fuente */
-  font-weight: 600; /* Peso de la fuente */
+  margin: 0; 
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600; 
 }
 
-/* ========== INFORMACIÓN DE CONEXIÓN ========== */
+
 .connection-info {
   display: flex;
   align-items: center;
@@ -55,36 +51,32 @@
   font-size: 12px;
 }
 
-/* ========== BOTONES DE ACCIÓN ========== */
 .query-actions {
-  display: flex; /* Habilita flexbox */
-  gap: 8px; /* Espacio entre botones */
+  display: flex;
+  gap: 8px;
 }
 
-/* ========== BOTÓN DE EJECUTAR ========== */
 .execute-btn {
-  background: var(--primary-color); /* Color de fondo usando variable CSS */
-  color: white; /* Color del texto */
-  border: none; /* Sin borde */
-  padding: 8px 16px; /* Espacio interno */
-  border-radius: 6px; /* Bordes redondeados */
-  cursor: pointer; /* Cambia el cursor a mano */
-  font-weight: 500; /* Peso de la fuente */
-  transition: background-color 0.2s; /* Transición suave */
+  background: var(--primary-color); 
+  color: white;   
+  border: none;   
+  padding: 8px 16px;  
+  border-radius: 6px;   
+  cursor: pointer;  
+  font-weight: 500;   
+  transition: background-color 0.2s;  
 }
 
-/* Efecto hover del botón de ejecutar */
+
 .execute-btn:hover:not(:disabled) {
-  background: var(--primary-hover); /* Color de hover usando variable CSS */
+  background: var(--primary-hover);
 }
 
-/* Estado deshabilitado del botón de ejecutar */
 .execute-btn:disabled {
-  background: var(--disabled-color); /* Color deshabilitado usando variable CSS */
-  cursor: not-allowed; /* Cambia el cursor para indicar que no está disponible */
+  background: var(--disabled-color); 
+  cursor: not-allowed; 
 }
 
-/* ========== BOTONES DE LIMPIAR ========== */
 .clear-query-btn,
 .clear-results-btn {
   background: var(--secondary-color); /* Color de fondo usando variable CSS */

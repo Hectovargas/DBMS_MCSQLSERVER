@@ -148,7 +148,7 @@ class DatabaseManager {
                     if (err) {
                         resolve({
                             success: false,
-                            message: 'Error de conexión',
+                            message: 'Error de conexiOn',
                             error: { code: err.code, message: err.message }
                         });
                         return;
@@ -168,12 +168,12 @@ class DatabaseManager {
                         try {
                             db.detach();
                         } catch (detachError) {
-                            console.error('Error al cerrar conexión:', detachError);
+                            console.error('Error al cerrar conexiOn:', detachError);
                         }
     
                         resolve({
                             success: true,
-                            message: 'Conexión exitosa'
+                            message: 'ConexiOn exitosa'
                         });
                     });
                 });
@@ -182,7 +182,7 @@ class DatabaseManager {
         } catch (error: any) {
             return {
                 success: false,
-                message: 'Error de conexión',
+                message: 'Error de conexiOn',
                 error: {
                     code: error.code,
                     message: error.message
@@ -225,7 +225,7 @@ class DatabaseManager {
         } catch (error: any) {
             return {
                 success: false,
-                message: 'Error al agregar conexión',
+                message: 'Error al agregar conexiOn',
                 error: { message: error.message }
             };
         }
@@ -400,8 +400,8 @@ class DatabaseManager {
             if (!connection.isConnected || !connection.pool) {
                 return {
                     success: false,
-                    error: 'La conexión no está activa. Por favor, conéctate primero.',
-                    message: 'Conexión no activa'
+                    error: 'La conexion no esta activa. Por favor, conectate primero.',
+                    message: 'Conexion no activa'
                 };
             }
 
@@ -490,45 +490,6 @@ class DatabaseManager {
         const connectionIds = Object.keys(this.connections);
         for (const connectionId of connectionIds) {
             await this.disconnectFromDatabase(connectionId);
-        }
-    }
-
-    async getPackages(connectionId: string): Promise<any> {
-        try {
-            if (!this.connections[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            const query = `
-                SELECT 
-                    'PACKAGE' AS OBJECT_TYPE,
-                    TRIM(P.RDB$PACKAGE_NAME) AS PACKAGE_NAME,
-                    CAST(P.RDB$PACKAGE_HEADER_SOURCE AS VARCHAR(8000)) AS HEADER_SOURCE,
-                    CAST(P.RDB$PACKAGE_BODY_SOURCE AS VARCHAR(8000)) AS BODY_SOURCE,
-                    P.RDB$DESCRIPTION AS DESCRIPTION,
-                    P.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
-                    P.RDB$SECURITY_CLASS AS SECURITY_CLASS
-                FROM RDB$PACKAGES P
-                WHERE (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
-                ORDER BY P.RDB$PACKAGE_NAME
-            `;
-
-            const result = await this.executeQuery(connectionId, query);
-
-            return {
-                success: true,
-                data: result.data || [],
-                message: `Se encontraron ${result.data ? result.data.length : 0} paquetes`
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al obtener paquetes',
-                error: { message: error.message }
-            };
         }
     }
 

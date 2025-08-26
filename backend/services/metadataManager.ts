@@ -160,41 +160,29 @@ class MetadataManager extends DatabaseManager {
                 F.RDB$FIELD_PRECISION AS "precision",               
                 F.RDB$FIELD_SCALE AS "scale",                       
                 CASE WHEN RF.RDB$NULL_FLAG = 1 THEN 0 ELSE 1 END AS "isNullable",
-
-                CASE                                                       
-                    WHEN RF.RDB$DEFAULT_SOURCE IS NULL THEN NULL            
-                    WHEN CHAR_LENGTH(RF.RDB$DEFAULT_SOURCE) = 0 THEN NULL   
+                
+                
+                CASE WHEN RF.RDB$DEFAULT_SOURCE IS NULL THEN NULL            
                     ELSE CAST(SUBSTRING(RF.RDB$DEFAULT_SOURCE FROM 9) AS VARCHAR(8000))      
                 END AS "defaultValue", 
+                
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM RDB$RELATION_CONSTRAINTS RC
+                    INNER JOIN RDB$INDEX_SEGMENTS S ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME
+                    WHERE RC.RDB$RELATION_NAME = RF.RDB$RELATION_NAME
+                    AND RC.RDB$CONSTRAINT_TYPE = 'PRIMARY KEY'
+                    AND S.RDB$FIELD_NAME = RF.RDB$FIELD_NAME
+                ) THEN 1 ELSE 0 END AS "isPrimaryKey",
+                
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM RDB$RELATION_CONSTRAINTS RC
+                    INNER JOIN RDB$INDEX_SEGMENTS S ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME
+                    WHERE RC.RDB$RELATION_NAME = RF.RDB$RELATION_NAME
+                    AND RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'
+                    AND S.RDB$FIELD_NAME = RF.RDB$FIELD_NAME
+                ) THEN 1 ELSE 0 END AS "isForeignKey"
 
-                CASE WHEN CPK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isPrimaryKey",
-                CASE WHEN CFK.RDB$FIELD_NAME IS NOT NULL THEN 1 ELSE 0 END AS "isForeignKey"
-
-            FROM RDB$RELATION_FIELDS RF                             
-            INNER JOIN RDB$RELATIONS R                              
-                ON RF.RDB$RELATION_NAME = R.RDB$RELATION_NAME       
-            INNER JOIN RDB$FIELDS F                                 
-                ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME   
-
-            LEFT JOIN (                                             
-                SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME       
-                FROM RDB$RELATION_CONSTRAINTS RC                    
-                INNER JOIN RDB$INDEX_SEGMENTS S                     
-                    ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME         
-                WHERE RC.RDB$CONSTRAINT_TYPE = 'PRIMARY KEY'        
-            ) CPK ON CPK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME         
-                AND CPK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME  
-
-            LEFT JOIN (
-                SELECT S.RDB$FIELD_NAME, RC.RDB$RELATION_NAME       
-                FROM RDB$RELATION_CONSTRAINTS RC                    
-                INNER JOIN RDB$INDEX_SEGMENTS S                     
-                    ON RC.RDB$INDEX_NAME = S.RDB$INDEX_NAME         
-                WHERE RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'     
-                ) 
-                CFK ON CFK.RDB$FIELD_NAME = RF.RDB$FIELD_NAME         
-                AND CFK.RDB$RELATION_NAME = RF.RDB$RELATION_NAME
-                    
+            FROM RDB$RELATION_FIELDS RF INNER JOIN RDB$FIELDS F ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME
             WHERE RF.RDB$RELATION_NAME = UPPER(?)                  
             ORDER BY RF.RDB$FIELD_POSITION                          
         `;
@@ -212,28 +200,11 @@ class MetadataManager extends DatabaseManager {
     }
 
 
-    async getSupportedDataTypes(): Promise<any> {
-        const firebirdDataTypes = [
-            'INTEGER', 'BIGINT', 'SMALLINT', 'FLOAT', 'DOUBLE PRECISION',
-            'CHAR', 'VARCHAR', 'BLOB', 'DATE', 'TIME', 'TIMESTAMP',
-            'BOOLEAN', 'DECIMAL', 'NUMERIC'
-        ];
-
-        return {
-            success: true,
-            data: firebirdDataTypes,
-            message: 'Tipos de datos obtenidos exitosamente'
-        };
-    }
-
-
 
     protected async getTableIndexes(connectionId: string, tableName: string): Promise<any> {
         const query = `
             SELECT 
-            I.RDB$INDEX_NAME AS INDEX_NAME,
-            I.RDB$UNIQUE_FLAG AS IS_UNIQUE,
-            I.RDB$INDEX_TYPE AS INDEX_TYPE
+            TRIM(I.RDB$INDEX_NAME) AS INDEX_NAME
             FROM RDB$INDICES I
             LEFT JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = I.RDB$RELATION_NAME
             WHERE I.RDB$RELATION_NAME = UPPER(?)
@@ -245,44 +216,41 @@ class MetadataManager extends DatabaseManager {
     }
 
 
-    protected async getTableConstraints(connectionId: string, tableName: string): Promise<any> {
+     async getTableConstraints(connectionId: string, tableName: string): Promise<any> {
         const query = `
-            SELECT 
-                TRIM(RC.RDB$CONSTRAINT_NAME) AS CONSTRAINT_NAME,
-                RC.RDB$CONSTRAINT_TYPE AS CONSTRAINT_TYPE,
-                TRIM(RC.RDB$RELATION_NAME) AS RELATION_NAME,
-                TRIM(RC.RDB$INDEX_NAME) AS INDEX_NAME,
-                
-                -- Para FOREIGN KEY: información de la tabla y columnas referenciadas
-                TRIM(REF.RDB$RELATION_NAME) AS REFERENCED_TABLE_NAME,
-                
-                -- Columnas locales de la constraint
-                (
-                    SELECT LIST(TRIM(ISG.RDB$FIELD_NAME))
-                    FROM RDB$INDEX_SEGMENTS ISG
-                    WHERE ISG.RDB$INDEX_NAME = RC.RDB$INDEX_NAME
-                    ORDER BY ISG.RDB$FIELD_POSITION
-                ) AS COLUMN_NAMES,
-                
-                -- Columnas referenciadas (para FK)
-                (
-                    SELECT LIST(TRIM(ISG_REF.RDB$FIELD_NAME))
-                    FROM RDB$INDEX_SEGMENTS ISG_REF
-                    WHERE ISG_REF.RDB$INDEX_NAME = SEG.RDB$FOREIGN_KEY
-                    ORDER BY ISG_REF.RDB$FIELD_POSITION
-                ) AS REFERENCED_COLUMN_NAMES
-                
-            FROM RDB$RELATION_CONSTRAINTS RC
-            
-            -- LEFT JOIN para FOREIGN KEY (obtener tabla referenciada)
-            LEFT JOIN RDB$REF_CONSTRAINTS REFC ON RC.RDB$CONSTRAINT_NAME = REFC.RDB$CONSTRAINT_NAME
-            LEFT JOIN RDB$RELATION_CONSTRAINTS REF ON REFC.RDB$CONST_NAME_UQ = REF.RDB$CONSTRAINT_NAME
-            
-            -- LEFT JOIN para obtener el índice de la FK
-            LEFT JOIN RDB$INDICES SEG ON RC.RDB$INDEX_NAME = SEG.RDB$INDEX_NAME
-            
-            WHERE RC.RDB$RELATION_NAME = UPPER(?)
-            ORDER BY RC.RDB$CONSTRAINT_TYPE, RC.RDB$CONSTRAINT_NAME;
+                SELECT 
+                    RC.RDB$CONSTRAINT_NAME AS CONSTRAINT_NAME,
+                    RC.RDB$CONSTRAINT_TYPE AS CONSTRAINT_TYPE,
+                    RC.RDB$RELATION_NAME AS RELATION_NAME,
+                    RC.RDB$INDEX_NAME AS INDEX_NAME,
+                    
+                    REF.RDB$RELATION_NAME AS REFERENCED_TABLE_NAME,
+                    REF.RDB$INDEX_NAME AS REFERENCED_INDEX_NAME,
+                    
+                    (SELECT LIST(ISG.RDB$FIELD_NAME)
+                        FROM RDB$INDEX_SEGMENTS ISG
+                        WHERE ISG.RDB$INDEX_NAME = RC.RDB$INDEX_NAME
+                        ORDER BY ISG.RDB$FIELD_POSITION
+                    ) AS COLUMN_NAMES,
+                    
+                    CASE WHEN RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY' THEN
+                        (
+                            SELECT LIST(ISG_REF.RDB$FIELD_NAME)
+                            FROM RDB$INDEX_SEGMENTS ISG_REF
+                            WHERE ISG_REF.RDB$INDEX_NAME = REF.RDB$INDEX_NAME
+                            ORDER BY ISG_REF.RDB$FIELD_POSITION
+                        )
+                    ELSE NULL END AS REFERENCED_COLUMN_NAMES
+                    
+                FROM RDB$RELATION_CONSTRAINTS RC
+                            
+                LEFT JOIN RDB$REF_CONSTRAINTS REFC 
+                ON RC.RDB$CONSTRAINT_NAME = REFC.RDB$CONSTRAINT_NAME
+                LEFT JOIN RDB$RELATION_CONSTRAINTS REF 
+                ON REFC.RDB$CONST_NAME_UQ = REF.RDB$CONSTRAINT_NAME
+                            
+                WHERE RC.RDB$RELATION_NAME = UPPER(?)
+                ORDER BY RC.RDB$CONSTRAINT_TYPE, RC.RDB$CONSTRAINT_NAME;
         `;
 
         return this.executeQuery(connectionId, query, tableName);
@@ -294,7 +262,6 @@ class MetadataManager extends DatabaseManager {
             if (constraint.COLUMN_NAMES) {
                 return constraint.COLUMN_NAMES.split(',').map((name: string) => name.trim());
             }
-
             return columns.map(col => col.name);
         } catch (error) {
             return columns.map(col => col.name);

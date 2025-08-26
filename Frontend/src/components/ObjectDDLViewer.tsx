@@ -1,4 +1,4 @@
-// ========== IMPORTS ==========
+
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-sql';
@@ -179,7 +179,7 @@ const ObjectDDLViewer: React.FC<ObjectDDLViewerProps> = ({
               </button>
             </div>
             <Editor
-              value={ddl || ''} // Ensure value is always a string
+              value={ddl || ''} 
               onValueChange={() => { }}
               highlight={(code) => safeHighlight(code)}
               padding={16}

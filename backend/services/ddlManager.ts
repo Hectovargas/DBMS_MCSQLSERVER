@@ -1,4 +1,3 @@
-import Console = require("node:console");
 import console = require("node:console");
 
 const OperationsManager = require('./operationsManager');
@@ -38,28 +37,24 @@ class DDLManager extends OperationsManager {
     
     private async buildTableDDL(connectionId: string, tableName: string, columns: any[], indexes: any[], constraints: any[]): Promise<string> {
         
-        // comentarios que siempre aparecen
+  
         let ddl = `-- ${tableName} definition\n\n-- DROP TABLE ${tableName};\n\n`;
         
-        // el crate table
-        ddl += `CREATE TABLE ${tableName} (\n`;
-        
-        // mapear las columnas de la tabla 
-        const columnDefs = columns.map(col => {
 
+        ddl += `CREATE TABLE ${tableName} (`;
+
+        const columnDefs = columns.map(col => {
             let def = `\t${col.name} ${this.getFirebirdDataType(col)}`;
-            
             if (!col.isNullable && !col.defaultValue) {
                 def += ' NOT NULL';
             }
-            
             if (col.defaultValue) {
                 def += ` DEFAULT ${this.formatDefault(col)}`;
             }
             
             return def;
         });
-        
+
         ddl += columnDefs.join(',\n');
         
        
@@ -93,26 +88,11 @@ class DDLManager extends OperationsManager {
             }
         }
         
-       
-        const fks = constraints.filter(c => c.CONSTRAINT_TYPE === 'FOREIGN KEY');
-        console.log('FKs encontradas:', fks); 
-        
-        if (fks.length > 0) {
-            ddl += `\n-- Foreign Keys\n`;
-            for (const fk of fks) {
-                const fkName = fk.CONSTRAINT_NAME || `FK_${tableName}_${Date.now()}`;
-                const fkFields = this.getConstraintFields(columns, fk);
-                const refTable = fk.REFERENCED_TABLE_NAME || 'REFERENCED_TABLE';
-                const refFields = fk.REFERENCED_COLUMN_NAMES || fkFields; 
-                
-                ddl += `ALTER TABLE ${tableName} ADD CONSTRAINT "${fkName}" `;
-                ddl += `FOREIGN KEY (${fkFields.map(f => `"${f}"`).join(', ')}) `;
-                ddl += `REFERENCES ${refTable}(${refFields.split(',').map((f:any) => `"${f.trim()}"`).join(', ')});\n`;
-            }
-        }
+    
         
         return ddl;
     }
+    
     
     private formatDefault(col: any): string {
         let value = String(col.defaultValue).replace(/^['"]+|['"]+$/g, '');
@@ -145,9 +125,7 @@ class DDLManager extends OperationsManager {
             const query = `
                 SELECT 
                     TRIM(R.RDB$RELATION_NAME) AS VIEW_NAME,
-                    CAST(R.RDB$VIEW_SOURCE AS VARCHAR(8000)) AS VIEW_SOURCE,
-                    R.RDB$DESCRIPTION AS DESCRIPTION,
-                    R.RDB$SYSTEM_FLAG AS SYSTEM_FLAG
+                    CAST(R.RDB$VIEW_SOURCE AS VARCHAR(8000)) AS VIEW_SOURCE
                 FROM RDB$RELATIONS R
                 WHERE R.RDB$RELATION_NAME = ?
                 AND R.RDB$VIEW_BLR IS NOT NULL
@@ -195,12 +173,7 @@ class DDLManager extends OperationsManager {
                 SELECT 
                     TRIM(R.RDB$FUNCTION_NAME) AS FUNCTION_NAME,
                     R.RDB$FUNCTION_TYPE AS FUNCTION_TYPE,
-                    R.RDB$QUERY_NAME AS QUERY_NAME,
-                    R.RDB$DESCRIPTION AS DESCRIPTION,
-                    R.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
                     CAST(R.RDB$FUNCTION_SOURCE AS VARCHAR(8000)) AS FUNCTION_SOURCE,
-                    R.RDB$MODULE_NAME AS MODULE_NAME,
-                    R.RDB$ENTRYPOINT AS ENTRYPOINT,
                     R.RDB$RETURN_ARGUMENT AS RETURN_ARGUMENT
                 FROM RDB$FUNCTIONS R
                 WHERE R.RDB$FUNCTION_NAME = ?
@@ -247,14 +220,7 @@ class DDLManager extends OperationsManager {
             const query = `
                 SELECT 
                     TRIM(P.RDB$PROCEDURE_NAME) AS PROCEDURE_NAME,
-                    CAST(P.RDB$PROCEDURE_SOURCE AS VARCHAR(8000)) AS PROCEDURE_SOURCE,
-                    P.RDB$PROCEDURE_BLR AS PROCEDURE_BLR,
-                    P.RDB$DESCRIPTION AS DESCRIPTION,
-                    P.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
-                    P.RDB$SECURITY_CLASS AS SECURITY_CLASS,
-                    P.RDB$PROCEDURE_TYPE AS PROCEDURE_TYPE,
-                    P.RDB$VALID_BLR AS VALID_BLR,
-                    P.RDB$DEBUG_INFO AS DEBUG_INFO
+                    CAST(P.RDB$PROCEDURE_SOURCE AS VARCHAR(8000)) AS PROCEDURE_SOURCE
                 FROM RDB$PROCEDURES P
                 WHERE P.RDB$PROCEDURE_NAME = ?
             `;
@@ -302,14 +268,10 @@ class DDLManager extends OperationsManager {
                     TRIM(T.RDB$TRIGGER_NAME) AS TRIGGER_NAME,
                     TRIM(T.RDB$RELATION_NAME) AS RELATION_NAME,
                     T.RDB$TRIGGER_TYPE AS TRIGGER_TYPE,
-                    CAST(T.RDB$TRIGGER_SOURCE AS VARCHAR(8000)) AS TRIGGER_SOURCE,
-                    T.RDB$TRIGGER_BLR AS TRIGGER_BLR,
+                    CAST(T.RDB$TRIGGER_SOURCE AS VARCHAR(8000)) AS TRIGGER_SOURCE,    
                     T.RDB$DESCRIPTION AS DESCRIPTION,
-                    T.RDB$TRIGGER_INACTIVE AS TRIGGER_INACTIVE,
-                    T.RDB$SYSTEM_FLAG AS SYSTEM_FLAG,
-                    T.RDB$FLAGS AS FLAGS,
-                    T.RDB$VALID_BLR AS VALID_BLR,
-                    T.RDB$DEBUG_INFO AS DEBUG_INFO
+                    T.RDB$TRIGGER_INACTIVE AS TRIGGER_INACTIVE
+
                 FROM RDB$TRIGGERS T
                 WHERE T.RDB$TRIGGER_NAME = ?
             `;
@@ -537,11 +499,9 @@ class DDLManager extends OperationsManager {
         try {
             const query = `
                 SELECT 
-                    TRIM(S.RDB$FIELD_NAME) AS FIELD_NAME,
-                    S.RDB$FIELD_POSITION AS FIELD_POSITION
+                TRIM(S.RDB$FIELD_NAME) AS FIELD_NAME
                 FROM RDB$INDEX_SEGMENTS S
                 WHERE S.RDB$INDEX_NAME = UPPER(?)
-                ORDER BY S.RDB$FIELD_POSITION
             `;
             
             const result = await this.executeQuery(connectionId, query, [indexName]);
@@ -572,45 +532,6 @@ class DDLManager extends OperationsManager {
         }
     }
 
-
-    async listAllSequences(connectionId: string): Promise<any> {
-        try {
-            if (!this.connections[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexión no encontrada'
-                };
-            }
-
-            const query = `
-                SELECT 
-                    TRIM(G.RDB$GENERATOR_NAME) AS SEQUENCE_NAME,
-                    G.RDB$DESCRIPTION AS DESCRIPTION,
-                    G.RDB$GENERATOR_ID AS GENERATOR_ID,
-                    G.RDB$SYSTEM_FLAG AS SYSTEM_FLAG
-                FROM RDB$GENERATORS G
-                WHERE (G.RDB$SYSTEM_FLAG IS NULL OR G.RDB$SYSTEM_FLAG = 0)
-                ORDER BY G.RDB$GENERATOR_NAME
-            `;
-
-            const result = await this.executeQuery(connectionId, query);
-
-            return {
-                success: true,
-                data: result.data || [],
-                message: `Se encontraron ${result.data ? result.data.length : 0} secuencias`
-            };
-
-        } catch (error: any) {
-            return {
-                success: false,
-                message: 'Error al listar secuencias',
-                error: { message: error.message }
-            };
-        }
-    }
-
-
     async generatePackageDDL(connectionId: string, packageName: string): Promise<any> {
         console.log("1");
         try {
@@ -628,16 +549,11 @@ class DDLManager extends OperationsManager {
                     CAST(P.RDB$PACKAGE_BODY_SOURCE AS VARCHAR(8000)) AS BODY_SOURCE,
                     P.RDB$DESCRIPTION AS DESCRIPTION
                 FROM RDB$PACKAGES P
-                WHERE (P.RDB$SYSTEM_FLAG IS NULL OR P.RDB$SYSTEM_FLAG = 0)
-                AND (
-                    TRIM(P.RDB$PACKAGE_NAME) = ?
-                    OR UPPER(TRIM(P.RDB$PACKAGE_NAME)) = UPPER(?)
-                    OR LOWER(TRIM(P.RDB$PACKAGE_NAME)) = LOWER(?)
-                )
+                WHERE P.RDB$PACKAGE_NAME = UPPER(?)
             `;
             console.log("3");
-           
-            const result = await this.executeQuery(connectionId, searchQuery, [packageName, packageName, packageName]);
+
+            const result = await this.executeQuery(connectionId, searchQuery, [packageName]);
             console.log("5");
             
             if (!result.success) {
@@ -715,9 +631,7 @@ class DDLManager extends OperationsManager {
             const query = `
                 SELECT 
                     TRIM(G.RDB$GENERATOR_NAME) AS SEQUENCE_NAME,
-                    G.RDB$DESCRIPTION AS DESCRIPTION,
-                    G.RDB$GENERATOR_ID AS GENERATOR_ID,
-                    G.RDB$SYSTEM_FLAG AS SYSTEM_FLAG
+                    G.RDB$DESCRIPTION AS DESCRIPTION
                 FROM RDB$GENERATORS G
                 WHERE G.RDB$GENERATOR_NAME = UPPER(?)
                 AND (G.RDB$SYSTEM_FLAG IS NULL OR G.RDB$SYSTEM_FLAG = 0)
@@ -765,65 +679,87 @@ class DDLManager extends OperationsManager {
     }
 
     async generateUserDDL(connectionId: string, userName: string): Promise<any> {
-        try {
-            if (!this.connections[connectionId]) {
-                return {
-                    success: false,
-                    message: 'Conexion no encontrada'
-                };
-            }
-
-            const query = `
-                SELECT 
-                    TRIM(SEC$USER_NAME) AS USER_NAME,
-                    SEC$ACTIVE AS ACTIVE,
-                    TRIM(SEC$PLUGIN) AS PLUGIN,
-                    TRIM(SEC$FIRST_NAME) AS FIRST_NAME,
-                    TRIM(SEC$LAST_NAME) AS LAST_NAME
-                FROM SEC$USERS
-                WHERE SEC$USER_NAME = UPPER(?)
-            `;
-
-            const result = await this.executeQuery(connectionId, query, [userName]);
-
-            if (!result.success || !result.data || result.data.length === 0) {
-                return {
-                    success: false,
-                    message: 'Usuario no encontrado'
-                };
-            }
-
-            const user = result.data[0];
-            const ddl = this.buildUserDDL(user);
-
-            return {
-                success: true,
-                data: ddl,
-                message: 'DDL de usuario generado exitosamente'
-            };
-
-        } catch (error: any) {
+    try {
+        if (!this.connections[connectionId]) {
             return {
                 success: false,
-                message: 'Error al generar DDL de usuario',
-                error: { message: error.message }
+                message: 'Conexión no encontrada'
             };
         }
-    }
 
+        const query = `
+            SELECT 
+                TRIM(SEC$USER_NAME) AS USER_NAME,
+                SEC$ACTIVE AS ACTIVE,
+                TRIM(SEC$PLUGIN) AS PLUGIN,
+                TRIM(SEC$FIRST_NAME) AS FIRST_NAME,
+                TRIM(SEC$MIDDLE_NAME) AS MIDDLE_NAME,
+                TRIM(SEC$LAST_NAME) AS LAST_NAME,
+                SEC$DESCRIPTION AS DESCRIPTION
+            FROM SEC$USERS
+            WHERE SEC$USER_NAME = ?
+        `;
 
-    private buildUserDDL(user: any): string {
-        let ddl = `CREATE USER "${user.USER_NAME}"`;
-        
-        if (user.FIRST_NAME || user.LAST_NAME) {
-            ddl += `\nFIRSTNAME '${user.FIRST_NAME || ''}'`;
-            ddl += `\nLASTNAME '${user.LAST_NAME || ''}'`;
+        const result = await this.executeQuery(connectionId, query, [userName]);
+
+        if (!result.success || !result.data || result.data.length === 0) {
+            return {
+                success: false,
+                message: 'Usuario no encontrado'
+            };
         }
-        
-        ddl += ';';
-        
-        return ddl;
+
+        const user = result.data[0];
+        const ddl = this.buildUserDDL(user);
+
+        return {
+            success: true,
+            data: ddl,
+            message: 'DDL de usuario generado exitosamente'
+        };
+
+    } catch (error: any) {
+        return {
+            success: false,
+            message: 'Error al generar DDL de usuario',
+            error: error.message
+        };
     }
+}
+
+private buildUserDDL(user: any): string {
+
+    const parts = [`CREATE USER "${user.USER_NAME}"`];
+    
+    parts.push(`PASSWORD '<<PASSWORD>>'`);
+    
+    if (user.FIRST_NAME) {
+        parts.push(`FIRSTNAME '${this.escapeString(user.FIRST_NAME)}'`);
+    }
+    
+    if (user.MIDDLE_NAME) {
+        parts.push(`MIDDLENAME '${this.escapeString(user.MIDDLE_NAME)}'`);
+    }
+    
+    if (user.LAST_NAME) {
+        parts.push(`LASTNAME '${this.escapeString(user.LAST_NAME)}'`);
+    }
+    
+    if (user.PLUGIN) {
+        parts.push(`USING PLUGIN ${user.PLUGIN}`);
+    }
+    
+    if (user.DESCRIPTION) {
+        parts.push(`DESCRIPTION '${this.escapeString(user.DESCRIPTION)}'`);
+    }
+    
+    return parts.join('\n') + ';';
+}
+
+private escapeString(value: string): string {
+    if (!value) return '';
+    return value.replace(/'/g, "''");
+}
 
 
 
@@ -858,7 +794,6 @@ class DDLManager extends OperationsManager {
                 });
             }
             
-
             return columns.length > 0 ? [columns[0].name] : ['UNKNOWN_COLUMN'];
         } catch (error) {
 

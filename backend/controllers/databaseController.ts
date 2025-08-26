@@ -43,7 +43,7 @@ class databaseController {
         return;
       }
 
-      const result = await databaseManager.addConection(connectionConfig);
+      const result = await databaseManager.addConnection(connectionConfig);
       
       if (result.success) {
         res.status(201).json(result);
@@ -671,34 +671,6 @@ class databaseController {
       res.status(500).json({
         success: false,
         message: 'Error al generar DDL de la secuencia',
-        error: { message: error.message }
-      });
-    }
-  }
-
-  async listAllSequences(req: any, res: any): Promise<void> {
-    try {
-      const { connectionId } = req.params;
-      
-      if (!connectionId) {
-        res.status(400).json({
-          success: false,
-          message: 'connectionId es requerido'
-        });
-        return;
-      }
-
-      const result = await databaseManager.listAllSequences(connectionId);
-      
-      if (result.success) {
-        res.status(200).json(result);
-      } else {
-        res.status(400).json(result);
-      }
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al listar secuencias',
         error: { message: error.message }
       });
     }

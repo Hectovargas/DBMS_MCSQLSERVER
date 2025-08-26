@@ -1,4 +1,3 @@
-/* ========== ESTILOS PARA EL VISOR DE DDL DE OBJETOS ========== */
 
 .object-ddl-viewer {
   padding: 20px;
@@ -8,7 +7,6 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* ========== ENCABEZADO DEL OBJETO ========== */
 .object-header {
   display: flex;
   justify-content: space-between;
@@ -34,7 +32,6 @@
   font-weight: 500;
 }
 
-/* ========== MENSAJE CUANDO NO HAY OBJETO SELECCIONADO ========== */
 .no-object-selected {
   text-align: center;
   padding: 60px 20px;
@@ -58,7 +55,6 @@
   background-repeat: no-repeat;
 }
 
-/* ========== INDICADOR DE CARGA ========== */
 .loading-message {
   text-align: center;
   padding: 40px 20px;
@@ -76,7 +72,6 @@
   50% { opacity: 0.6; }
 }
 
-/* ========== MENSAJE DE ERROR ========== */
 .error-message {
   background-color: var(--error-bg);
   border: 1px solid var(--error-border);
@@ -102,7 +97,6 @@
   background-repeat: no-repeat;
 }
 
-/* ========== CONTENIDO DEL DDL ========== */
 .ddl-content {
   background-color: var(--bg-primary);
   border-radius: 6px;
@@ -127,7 +121,6 @@
   font-size: 0.95rem;
 }
 
-/* ========== SUGERENCIA DE DDL ========== */
 .ddl-suggestion {
   background-color: var(--bg-secondary);
   border-radius: 6px;
@@ -151,7 +144,6 @@
   font-size: 1rem;
 }
 
-/* ========== BOTÓN DE COPIAR ========== */
 .copy-btn {
   background-color: var(--accent-color);
   color: var(--text-on-accent);
@@ -172,7 +164,6 @@
   transform: translateY(1px);
 }
 
-/* ========== EDITOR DE CÓDIGO ========== */
 .ddl-code {
   background-color: var(--bg-primary) ;
   color: var(--text-primary) ;

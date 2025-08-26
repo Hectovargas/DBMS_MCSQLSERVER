@@ -459,7 +459,7 @@ class ApiService {
 
   async generateUserDDL(connectionId: string, userName: string): Promise<any> {
     try {
-      
+      console.log("Generando DDL para el usuario:", userName);
       const url = `${API_BASE}/${connectionId}/users/${userName}/ddl`;
       
       const response = await fetch(url);
@@ -472,16 +472,7 @@ class ApiService {
 
   async generatePackageDDL(connectionId: string, packageName: string): Promise<any> {
     try {
-      console.log(`🔍 [FRONTEND] Generando DDL para paquete: ${packageName} en conexión: ${connectionId}`);
-      
-      // Codificar el nombre del paquete para la URL
-      const encodedPackageName = encodeURIComponent(packageName);
-      const url = `${API_BASE}/${connectionId}/packages/${encodedPackageName}/ddl`;
-      
-      console.log(`📡 [FRONTEND] URL de la petición: ${url}`);
-      console.log(`📡 [FRONTEND] Nombre original: "${packageName}"`);
-      console.log(`📡 [FRONTEND] Nombre codificado: "${encodedPackageName}"`);
-      
+      const url = `${API_BASE}/${connectionId}/packages/${packageName}/ddl`;
       const response = await fetch(url);
       return await this.handleResponse(response);
     } catch (error) {
